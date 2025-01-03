@@ -4,257 +4,273 @@
 
 ```
 game_server/
-├── data/                # Data persistence layer
+├── data/                 # Data persistence layer
 │   ├── behavior_service.py  # Behavior data operations
 │   ├── config_service.py    # Configuration management
 │   ├── db_connector.py      # Database connection handler
 │   ├── user_service.py      # User management
 │   └── __init__.py
-├── game/                # Game logic layer
-│   ├── behaviors.py         # Core behavior definitions
-│   ├── behavior_manager.py  # Behavior orchestration
-│   ├── config_manager.py    # Runtime config management
-│   ├── constants.py         # Game constants
-│   ├── loop.py             # Game loop handler
-│   ├── models.py           # Game entities
-│   ├── services.py         # Game service integrations
-│   ├── state.py           # Game state management
-│   ├── user_manager.py    # User session management
-│   ├── vector.py          # Vector calculations
-│   └── world/            # World environment
-│       ├── base.py       # Base world elements
-│       ├── wall.py       # Wall implementations
-│       ├── world.py      # World management
-│       └── __init__.py
-├── llm/                 # LLM Integration
-│   ├── context_handler.py  # Context processing
-│   ├── llm_call.py        # LLM service calls
-│   ├── prompts.py         # LLM prompt templates
-│   └── __init__.py
-├── network/             # Network layer
-│   ├── websocket.py     # WebSocket communication
-│   └── __init__.py
-└── main.py             # Application entry point
+├── game/                 # Game logic layer
+│   ├── behaviors/        # Behavior system
+│   │   ├── base.py         # Base behavior classes
+│   │   ├── combat.py       # Combat behaviors
+│   │   ├── movement.py     # Movement behaviors
+│   │   └── __init__.py
+│   ├── physics/         # Physics handling
+│   │   ├── collision.py    # Collision detection/resolution
+│   │   └── __init__.py
+│   ├── world/           # World environment
+│   │   ├── base.py        # Base world elements
+│   │   ├── wall.py        # Wall implementations
+│   │   ├── world.py       # World management
+│   │   └── __init__.py
+│   ├── models.py        # Game entities
+│   ├── state.py         # Game state management
+│   ├── vector.py        # Vector calculations
+│   ├── constants.py     # Game constants
+│   └── loop.py          # Game loop handler
+└── network/             # Network layer
+    ├── websocket.py     # WebSocket communication
+    └── __init__.py
 ```
 
-## Core Components
+## Core Systems
 
-### Data Layer (data/)
-Handles all data persistence and database operations.
-
-**1. Database Connector (db_connector.py)**
+### Physics System
 ```python
-class DatabaseConnector:
-    - MongoDB connection management
-    - Collection access
-    - ID formatting and validation
-    - Error handling
+# Physics handling for agents and world interactions
+class Physics:
+    """
+    Core physics component for entities
+    - Position management
+    - Velocity handling
+    - Force application
+    - Collision detection readiness
+    """
+    - position: Vector2D
+    - velocity: Vector2D
+    - acceleration: Vector2D
+    - radius: float
+    - stored_force: Optional[Vector2D]
+    
+    Methods:
+    - update(movement: MovementStats) -> None
+    - apply_force(force: Vector2D) -> None
 ```
 
-**2. Behavior Service (behavior_service.py)**
+### Collision System
 ```python
-class BehaviorService:
-    - save_behavior(behavior_data: dict) -> str
-    - get_behavior(behavior_id: str) -> dict
-    - list_behaviors() -> List[Dict]
-    - update_behavior(behavior_id: str, updates: dict) -> bool
-    - delete_behavior(behavior_id: str) -> bool
+class CollisionInfo:
+    """
+    Collision detection and resolution data
+    """
+    - is_colliding: bool
+    - penetration: float
+    - normal: Optional[Vector2D]
+    - point: Optional[Vector2D]
+
+def resolve_collision(
+    position: Vector2D,
+    velocity: Vector2D,
+    collision: CollisionInfo,
+    restitution: float = 0.3
+) -> Tuple[Vector2D, Vector2D]:
+    """
+    Resolves collisions between agents and world objects
+    Returns new position and velocity
+    """
 ```
 
-**3. Config Service (config_service.py)**
-```python
-class ConfigService:
-    - save_config(config_data: dict, user_id: str) -> str
-    - get_config(config_id: str) -> dict
-    - list_configs(user_id: Optional[str]) -> List[Dict]
-    - update_config(config_id: str, updates: dict) -> bool
-    - delete_config(config_id: str, user_id: str) -> bool
-    - get_default_config() -> dict
-```
-
-**4. User Service (user_service.py)**
-```python
-class UserService:
-    - get_or_create_default_user() -> Dict
-    - get_user(user_id: str) -> Dict
-    - update_user_settings(user_id: str, settings: dict) -> bool
-```
-
-### Game Layer (game/)
-
-**1. Game State (state.py)**
-```python
-class GameState:
-    - Manages active game session
-    - Handles agent lifecycle
-    - Tracks performance metrics
-    - Manages user context
-    - Handles configuration state
-```
-
-**2. Behavior System (behaviors.py, behavior_manager.py)**
-```python
-class BehaviorManager:
-    - Behavior registration
-    - Custom behavior validation
-    - Behavior execution
-    - State management
-```
-
-**3. Config Management (config_manager.py)**
-```python
-class ConfigManager:
-    - Runtime config updates
-    - Config validation
-    - Default config management
-    - User config handling
-```
-
-**4. World System (world/)**
+### World System
 ```python
 class World:
-    - Environment management
-    - Collision detection
-    - Obstacle handling
-    - Boundary management
+    """
+    Manages all static world elements and collision handling
+    """
+    - objects: List[Object]
+    - walls: List[Wall]
+    - bounds: Tuple[float, float, float, float]
+
+    Methods:
+    - generate_world(width: float, height: float, num_walls: int)
+    - check_collisions(position: Vector2D, radius: float) -> CollisionInfo
+    - resolve_agent_collision(position: Vector2D, velocity: Vector2D, radius: float)
+    - update() -> None
 ```
 
-### LLM Integration (llm/)
-
-**1. Context Handler (context_handler.py)**
+### Agent System
 ```python
-class LLMContextHandler:
-    - Context preprocessing
-    - Query validation
-    - Response formatting
-    - Code generation context
+class Agent:
+    """
+    Core agent implementation with physics and behavior
+    """
+    - id: str
+    - team: str
+    - physics: Physics
+    - combat: CombatStats
+    - movement: MovementStats
+    - behavior_system: BehaviorSystem
+    - world: World  # Reference to world for collision
+    - bounds: Tuple[float, float, float, float]
+
+    Methods:
+    - update_behavior(nearby_agents: List[Agent]) -> None
+    - update_position() -> None
+    - handle_combat(all_agents: List[Agent]) -> None
 ```
 
-**2. LLM Service (llm_call.py)**
+### State Management System
 ```python
-class LLMService:
-    - API communication
-    - Response processing
-    - Error handling
-    - Context management
+class GameState:
+    """
+    Central game state manager
+    """
+    - agents: Dict[str, Agent]
+    - world: World
+    - stats: GameStats
+    - is_running: bool
+    - active_config: Optional[Dict]
+    
+    Core Update Cycle:
+    1. Behavior Update:
+       - Update agent behaviors
+       - Calculate forces
+    
+    2. Physics Update:
+       - Store original positions
+       - Update positions
+       - Detect collisions
+       - Resolve collisions
+    
+    3. Combat Resolution:
+       - Process attacks
+       - Handle agent deaths
+       - Update statistics
 ```
 
-### Network Layer (network/)
+## Game Loop
 
-**WebSocket Handler (websocket.py)**
 ```python
-class ConnectionManager:
-    - Client connection management
-    - Message routing
-    - State synchronization
-    - Event broadcasting
+class GameLoop:
+    """
+    Main game loop implementation
+    """
+    def _loop(self):
+        while self.is_running:
+            if self.game_state.is_running:
+                # 1. State Update
+                state = self.game_state.update()
+                
+                # 2. Broadcast Updates
+                await self.broadcast_callback({
+                    "type": "game_update",
+                    "data": {
+                        "timestamp": state["timestamp"],
+                        "agents": state["agents"],
+                        "stats": state["stats"]
+                    }
+                })
+                
+                # 3. Handle Combat Events
+                if state["recent_kills"]:
+                    await self.broadcast_combat_event(state)
+                    
+            await asyncio.sleep(UPDATE_INTERVAL)
 ```
 
-## Communication Flow
+## State Synchronization
 
-### Configuration Flow
-```
-Client Request → WebSocket → ConfigManager → ConfigService → Database
-                                ↓
-                          State Update → Broadcast → Clients
-```
-
-### User Management Flow
-```
-Connection → UserService → Default User → ConfigService → Initial State
-                                               ↓
-                                         State Update → Client
-```
-
-### Behavior Management Flow
-```
-Custom Behavior → BehaviorManager → Validation → BehaviorService → Database
-                       ↓
-                 State Update → Broadcast → Clients
+### World State
+```python
+{
+    "walls": [
+        {
+            "name": str,
+            "x": float,
+            "y": float,
+            "width": float,
+            "height": float
+        }
+    ],
+    "bounds": tuple[float, float, float, float],
+    "holes": [],
+    "colines": []
+}
 ```
 
-## State Management
+### Agent State
+```python
+{
+    "id": str,
+    "team": str,
+    "position": {
+        "x": float,
+        "y": float
+    },
+    "health": float,
+    "target_id": Optional[str],
+    "behavior": Optional[str]
+}
+```
 
-### User Context
-- Default user handling
-- User-specific configurations
-- Session management
-- Permission validation
+## Physics Pipeline
 
-### Configuration State
-- Active configuration tracking
-- User-specific settings
-- Default fallbacks
-- Runtime updates
+1. **Pre-Update**
+   - Store original positions
+   - Calculate forces from behaviors
 
-### Game State
-- World state
-- Agent states
-- Team statistics
-- Performance metrics
+2. **Update**
+   - Apply forces
+   - Update velocities
+   - Update positions
 
-## Error Handling
+3. **Collision Resolution**
+   - Detect collisions
+   - Calculate collision responses
+   - Apply position corrections
+   - Update velocities
 
-### Database Operations
-- Connection error recovery
-- Transaction management
-- Validation errors
-- Constraint violations
-
-### User Operations
-- Authentication errors
-- Permission errors
-- Session handling
-- State recovery
-
-### Configuration
-- Validation errors
-- Update conflicts
-- Default config handling
-- User config access
+4. **Post-Update**
+   - Apply bounds checking
+   - Update agent states
+   - Broadcast updates
 
 ## Development Guidelines
 
-### Data Layer
-1. Use service abstractions
-2. Handle database transactions
-3. Validate all operations
-4. Maintain type safety
+### Physics Handling
+1. Use vector operations for all calculations
+2. Handle collisions in world space
+3. Maintain proper collision resolution order
+4. Cache collision results when possible
 
-### Game Logic
-1. Separate concerns
-2. Use manager classes
-3. Maintain state consistency
-4. Handle edge cases
+### State Management
+1. Centralize state updates in GameState
+2. Use proper type hints
+3. Handle all edge cases
+4. Maintain consistent state broadcasting
 
-### Configuration
-1. Validate configs
-2. Handle user context
-3. Maintain defaults
-4. Track changes
+### Error Handling
+1. Validate all physics calculations
+2. Handle collision edge cases
+3. Maintain proper error logging
+4. Use appropriate error recovery
 
-## Testing Strategy
+## Testing Focus Areas
 
-### Components to Test
-- Database operations
-- Game state management
-- Configuration handling
-- User management
-- World physics
-- Network communication
+1. **Physics Tests**
+   - Collision detection accuracy
+   - Resolution correctness
+   - Edge case handling
+   - Vector calculations
 
-### Test Types
-1. Unit Tests
-   - Service operations
-   - Game logic
+2. **State Tests**
+   - Update cycle correctness
+   - State consistency
+   - Event handling
    - Data validation
 
-2. Integration Tests
-   - Database operations
+3. **Integration Tests**
+   - Full update cycle
+   - Multi-agent interactions
+   - World-agent interactions
    - State synchronization
-   - Config management
-
-3. System Tests
-   - End-to-end flows
-   - Error scenarios
-   - Performance tests

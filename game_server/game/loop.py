@@ -3,7 +3,7 @@
 import asyncio
 from typing import Callable
 from loguru import logger
-from .state import GameState
+from .state_manager import GameState
 from .constants import UPDATE_INTERVAL
 
 class GameLoop:
@@ -18,7 +18,10 @@ class GameLoop:
             self.is_running = True
             self.task = asyncio.create_task(self._loop())
             logger.info("Game loop started")
-
+    def should_run(self) -> bool:
+        """Check if game loop should run based on connection state"""
+        return True  # or any other condition you want to check
+    
     async def stop(self):
         if self.task:
             self.is_running = False
