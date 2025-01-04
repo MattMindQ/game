@@ -16,10 +16,10 @@ export class Game {
         blue_kills: 0,
         total_deaths: 0
     };
-    private isRunning: boolean = false;
-    private lastFrameTime: number = 0;
-    private frameCount: number = 0;
-    private lastFpsUpdate: number = 0;
+    private isRunning = false;
+    private lastFrameTime = 0;
+    private frameCount = 0;
+    private lastFpsUpdate = 0;
     private selectedAgentId: string | null = null;
 
     constructor(stateManager: StateManager) {
@@ -52,7 +52,6 @@ export class Game {
             this.stats = stats;
         });
 
-        // Add this to setupEventListeners in Game.ts
         this.stateManager.subscribe('world', (worldState) => {
             if (worldState && worldState.walls) {
                 this.worldState = worldState;
@@ -63,11 +62,9 @@ export class Game {
         gridToggle?.addEventListener('change', (e) => {
             this.renderer.toggleGrid((e.target as HTMLInputElement).checked);
         });
-
         debugToggle?.addEventListener('change', (e) => {
             this.renderer.toggleDebug((e.target as HTMLInputElement).checked);
         });
-
         zonesToggle?.addEventListener('change', (e) => {
             this.renderer.toggleZones((e.target as HTMLInputElement).checked);
         });
@@ -216,7 +213,6 @@ export class Game {
         this.stateManager.updateAgentBehavior(agentId, behaviorUpdate);
     }
 
-    // Utility methods
     public getSelectedAgent(): Agent | null {
         return this.agents.find(agent => agent.id === this.selectedAgentId) || null;
     }

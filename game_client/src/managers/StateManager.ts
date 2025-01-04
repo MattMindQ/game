@@ -1,7 +1,9 @@
-// src/managers/StateManager.ts
-
 import { Agent, GameStats, Position, WorldState, GameConfig } from '../types'; 
-import { ConfigManager } from './ConfigManager';
+import { AgentSlice } from '../state/AgentSlice';
+import { GameSlice } from '../state/GameSlice';
+import { ConfigSlice } from '../state/ConfigSlice';
+// 1. Import the new WorldSlice
+import { WorldSlice } from '../state/WorldSlice';
 
 type StateKey =
   | 'gameState'
@@ -15,41 +17,50 @@ type StateKey =
 type Subscriber = (data: any) => void;
 
 interface GameState {
+  // Delegated to GameSlice:
   isRunning: boolean;
   connectionStatus: 'connected' | 'disconnected' | 'error';
+
+  // Delegated to AgentSlice:
   agents: Agent[];
   selectedAgent: Agent | null;
   stats: GameStats;
+
+  // Delegated to ConfigSlice:
+  config: GameConfig | null;
+
+  // Delegated to WorldSlice:
   world: WorldState | null;
-  config: GameConfig | null; // <-- Added here
 }
 
 export class StateManager {
   private state: GameState;
   private subscribers: Map<StateKey, Set<Subscriber>> = new Map();
-  private configManager: ConfigManager;
+
+  // 2. Add references to our slices
+  private agentSlice: AgentSlice;
+  private gameSlice: GameSlice;
+  private configSlice: ConfigSlice;
+  private worldSlice: WorldSlice;
 
   constructor() {
-    this.configManager = new ConfigManager();
+    // Instantiate slices
+    this.agentSlice = new AgentSlice();
+    this.gameSlice = new GameSlice();
+    this.configSlice = new ConfigSlice();
+    this.worldSlice = new WorldSlice();
 
+    // Initialize them so we can mirror the slice states in this.state
     this.state = {
-      isRunning: false,
-      connectionStatus: 'disconnected',
-      agents: [],
-      selectedAgent: null,
-      stats: {
-        fps: 0,
-        red_agents: 0,
-        blue_agents: 0,
-        red_kills: 0,
-        blue_kills: 0,
-        total_deaths: 0
-      },
-      world: null,
-      config: null
+      isRunning: this.gameSlice.getIsRunning(),
+      connectionStatus: this.gameSlice.getConnectionStatus(),
+      agents: this.agentSlice.getAgents(),
+      selectedAgent: this.agentSlice.getSelectedAgent(),
+      stats: this.agentSlice.getStats(),
+      config: this.configSlice.getActiveConfig(),
+      world: this.worldSlice.getWorld()
     };
 
-    // Initialize empty subscriber sets for each state key, including 'config' and 'world'.
     [
       'gameState',
       'agents',
@@ -62,46 +73,26 @@ export class StateManager {
       this.subscribers.set(key as StateKey, new Set());
     });
 
-    // Subscribe to config changes from ConfigManager
-    this.configManager.subscribe((config) => {
-      this.state.config = config;
-      this.notifySubscribers('config', config);
-      this.updateConfigUI(config);
-    });
+    // Initialize the config slice if needed
+    this.configSlice.initializeConfig();
+
+    // Optionally load the active config into this.state
+    const currentConfig = this.configSlice.getActiveConfig();
+    if (currentConfig) {
+      this.state.config = currentConfig;
+      this.notifySubscribers('config', currentConfig);
+      this.updateConfigUI(currentConfig);
+    }
   }
 
-  // Config Management
-  public getConfigManager(): ConfigManager {
-    return this.configManager;
-  }
-
-  public getActiveConfig(): GameConfig | null {
-    return this.state.config;
-  }
-
-  public updateConfigParameter<K extends keyof GameConfig['parameters']>(
-    key: K,
-    value: GameConfig['parameters'][K]
-  ): void {
-    this.configManager.updateConfigParameter(key, value);
-  }
-
-  public async saveConfig(name: string, description?: string): Promise<void> {
-    await this.configManager.saveCurrentConfig(name, description);
-  }
-
-  public loadConfig(configId: string): void {
-    this.configManager.loadConfig(configId);
-  }
-
-  // Subscription Management
+  // -----------------------------------------------------------
+  //                SUBSCRIPTION MANAGEMENT
+  // -----------------------------------------------------------
   public subscribe(key: StateKey, callback: Subscriber): () => void {
     const subscribers = this.subscribers.get(key);
     if (subscribers) {
       subscribers.add(callback);
     }
-
-    // Return unsubscribe function
     return () => {
       subscribers?.delete(callback);
     };
@@ -112,17 +103,21 @@ export class StateManager {
     subscribers?.forEach(callback => callback(data));
   }
 
-  // State Updates
+  // -----------------------------------------------------------
+  //                GAME SLICE (DELEGATION)
+  // -----------------------------------------------------------
   public setGameRunning(isRunning: boolean) {
-    this.state.isRunning = isRunning;
-    this.notifySubscribers('gameState', { isRunning });
+    this.gameSlice.setIsRunning(isRunning);
+    this.state.isRunning = this.gameSlice.getIsRunning();
+    this.notifySubscribers('gameState', { isRunning: this.state.isRunning });
   }
 
   public setConnectionStatus(status: 'connected' | 'disconnected' | 'error') {
-    this.state.connectionStatus = status;
-    this.notifySubscribers('connectionStatus', status);
+    this.gameSlice.setConnectionStatus(status);
+    this.state.connectionStatus = this.gameSlice.getConnectionStatus();
+    this.notifySubscribers('connectionStatus', this.state.connectionStatus);
 
-    // Update UI elements
+    // Optional UI updates
     const statusElement = document.getElementById('connectionStatus');
     if (statusElement) {
       statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
@@ -130,8 +125,6 @@ export class StateManager {
         status === 'connected' ? 'green' : 'red'
       }-500`;
     }
-
-    // Update button states
     this.updateControlButtons();
   }
 
@@ -142,8 +135,8 @@ export class StateManager {
     const addBlueButton = document.getElementById('addBlueAgent') as HTMLButtonElement;
     const saveConfigButton = document.getElementById('saveConfigButton') as HTMLButtonElement;
 
-    const isConnected = this.state.connectionStatus === 'connected';
-    const isRunning = this.state.isRunning;
+    const isConnected = this.gameSlice.getConnectionStatus() === 'connected';
+    const isRunning = this.gameSlice.getIsRunning();
 
     if (startButton) startButton.disabled = !isConnected || isRunning;
     if (pauseButton) pauseButton.disabled = !isConnected || !isRunning;
@@ -152,24 +145,31 @@ export class StateManager {
     if (saveConfigButton) saveConfigButton.disabled = !isConnected;
   }
 
-  // Agent Management
+  // -----------------------------------------------------------
+  //                AGENT SLICE (DELEGATION)
+  // -----------------------------------------------------------
   public updateSimulationState(agents: Agent[], stats?: GameStats, world?: WorldState) {
-    this.state.agents = agents;
-    this.notifySubscribers('agents', agents);
-
+    this.agentSlice.setAgents(agents);
     if (stats) {
-      this.state.stats = { ...this.state.stats, ...stats };
-      this.notifySubscribers('stats', this.state.stats);
+      this.agentSlice.updateStats(stats);
     }
+    this.state.agents = this.agentSlice.getAgents();
+    this.state.stats = this.agentSlice.getStats();
+    this.notifySubscribers('agents', this.state.agents);
+    this.notifySubscribers('stats', this.state.stats);
 
+    // Delegate to WorldSlice
     if (world) {
-      this.state.world = world;
-      this.notifySubscribers('world', world);
+      this.worldSlice.setWorld(world);
+      this.state.world = this.worldSlice.getWorld();
+      this.notifySubscribers('world', this.state.world);
     }
 
-    // Update selected agent if exists
-    if (this.state.selectedAgent) {
-      const updatedSelectedAgent = agents.find(a => a.id === this.state.selectedAgent?.id);
+    // Update selected agent if it exists
+    if (this.agentSlice.getSelectedAgent()) {
+      const updatedSelectedAgent = agents.find(
+        a => a.id === this.agentSlice.getSelectedAgent()?.id
+      );
       if (updatedSelectedAgent) {
         this.setSelectedAgent(updatedSelectedAgent);
       }
@@ -177,15 +177,15 @@ export class StateManager {
   }
 
   public setSelectedAgent(agent: Agent | null) {
-    this.state.selectedAgent = agent;
-    this.notifySubscribers('selectedAgent', agent);
+    this.agentSlice.setSelectedAgent(agent);
+    this.state.selectedAgent = this.agentSlice.getSelectedAgent();
+    this.notifySubscribers('selectedAgent', this.state.selectedAgent);
 
-    // Update UI elements for selected agent
     this.updateSelectedAgentUI(agent);
   }
 
   private updateSelectedAgentUI(agent: Agent | null) {
-    // Update editor status
+    // (Existing DOM update code remains here)
     const editorStatus = document.getElementById('editorStatus');
     if (editorStatus) {
       if (agent) {
@@ -211,7 +211,6 @@ export class StateManager {
       if (elements.agentTeam) elements.agentTeam.textContent = agent.team;
       if (elements.agentHealth) elements.agentHealth.textContent = `${agent.health}%`;
 
-      // Update combat stats
       if (elements.agentKills) {
         elements.agentKills.textContent = agent.kills?.toString() || '0';
       }
@@ -222,15 +221,79 @@ export class StateManager {
         elements.agentDamageTaken.textContent = agent.damageTaken?.toString() || '0';
       }
     } else {
-      // Clear all fields when no agent is selected
       Object.values(elements).forEach(element => {
         if (element) element.textContent = '-';
       });
     }
   }
 
+  public updateAgentPosition(agentId: string, position: Position) {
+    const agents = this.agentSlice.getAgents();
+    const agent = agents.find(a => a.id === agentId);
+    if (agent) {
+      agent.position = position;
+      this.state.agents = agents;
+      this.notifySubscribers('agents', this.state.agents);
+    }
+  }
+
+  // -----------------------------------------------------------
+  //                CONFIG SLICE (DELEGATION)
+  // -----------------------------------------------------------
+  public getActiveConfig(): GameConfig | null {
+    return this.configSlice.getActiveConfig();
+  }
+
+  public updateConfigParameter<K extends keyof GameConfig['parameters']>(
+    key: K,
+    value: GameConfig['parameters'][K]
+  ): void {
+    this.configSlice.updateConfigParameter(key, value);
+
+    const currentConfig = this.configSlice.getActiveConfig();
+    if (currentConfig) {
+      this.state.config = currentConfig;
+      this.notifySubscribers('config', currentConfig);
+      this.updateConfigUI(currentConfig);
+    }
+  }
+
+  public async saveConfig(name: string, description?: string): Promise<void> {
+    await this.configSlice.saveConfig(name, description);
+
+    const currentConfig = this.configSlice.getActiveConfig();
+    if (currentConfig) {
+      this.state.config = currentConfig;
+      this.notifySubscribers('config', currentConfig);
+      this.updateConfigUI(currentConfig);
+    }
+  }
+
+  public loadConfig(configId: string): void {
+    this.configSlice.loadConfig(configId);
+
+    const currentConfig = this.configSlice.getActiveConfig();
+    if (currentConfig) {
+      this.state.config = currentConfig;
+      this.notifySubscribers('config', currentConfig);
+      this.updateConfigUI(currentConfig);
+    }
+  }
+
+  public getConfigManager() {
+    return this.configSlice.getConfigManager();
+  }
+
+  public initializeConfig(): void {
+    this.configSlice.initializeConfig();
+    const currentConfig = this.configSlice.getActiveConfig();
+    if (currentConfig) {
+      this.state.config = currentConfig;
+      this.updateConfigUI(currentConfig);
+    }
+  }
+
   private updateConfigUI(config: GameConfig): void {
-    // Update all input fields with the new config values
     Object.entries(config.parameters).forEach(([key, value]) => {
       const element = document.querySelector(`[data-config-key="${key}"]`) as HTMLInputElement;
       if (element) {
@@ -242,67 +305,74 @@ export class StateManager {
       }
     });
 
-    // Update the active config name display
     const activeConfigName = document.getElementById('activeConfigName');
     if (activeConfigName) {
       activeConfigName.textContent = config.name;
     }
   }
 
-  public initializeConfig(): void {
-    const config = this.configManager.getActiveConfig();
-    if (config) {
-      this.state.config = config;
-      this.updateConfigUI(config);
-    }
+  // -----------------------------------------------------------
+  //                WORLD SLICE (DELEGATION)
+  // -----------------------------------------------------------
+  /**
+   * If you need specific world-manipulation methods, expose them here,
+   * delegating to `WorldSlice`.
+   */
+  public getWorldState(): WorldState | null {
+    return this.worldSlice.getWorld();
   }
 
+  public setWorldState(world: WorldState): void {
+    this.worldSlice.setWorld(world);
+    this.state.world = this.worldSlice.getWorld();
+    this.notifySubscribers('world', this.state.world);
+  }
+
+  public clearWorldState(): void {
+    this.worldSlice.clearWorld();
+    this.state.world = null;
+    this.notifySubscribers('world', null);
+  }
+
+  // -----------------------------------------------------------
+  //                MISC & GETTERS
+  // -----------------------------------------------------------
   public updateTeamCounts(counts: { red: number; blue: number }) {
-    // Update stats
-    this.state.stats.red_agents = counts.red;
-    this.state.stats.blue_agents = counts.blue;
+    this.agentSlice.updateStats({
+      red_agents: counts.red,
+      blue_agents: counts.blue
+    });
+    this.state.stats = this.agentSlice.getStats();
     this.notifySubscribers('stats', this.state.stats);
 
-    // Update UI elements
     const redCount = document.getElementById('redTeamCount');
     const blueCount = document.getElementById('blueTeamCount');
-
     if (redCount) redCount.textContent = `${counts.red} agents`;
     if (blueCount) blueCount.textContent = `${counts.blue} agents`;
   }
 
-  // State Getters
-  public getState(): GameState {
+  public getState() {
     return this.state;
   }
 
   public getAgents(): Agent[] {
-    return this.state.agents;
+    return this.agentSlice.getAgents();
   }
 
   public getSelectedAgent(): Agent | null {
-    return this.state.selectedAgent;
+    return this.agentSlice.getSelectedAgent();
   }
 
   public getStats(): GameStats {
-    return this.state.stats;
+    return this.agentSlice.getStats();
   }
 
   public isGameRunning(): boolean {
-    return this.state.isRunning;
+    return this.gameSlice.getIsRunning();
   }
 
-  // WebSocket Message Handlers
+  // WebSocket message handlers remain unchanged
   public requestAddAgent(team: 'red' | 'blue') {
-    // This will be handled by the WebSocket connection
-    // Implementation in GameConnection class
-  }
-
-  public updateAgentPosition(agentId: string, position: Position) {
-    const agent = this.state.agents.find(a => a.id === agentId);
-    if (agent) {
-      agent.position = position;
-      this.notifySubscribers('agents', this.state.agents);
-    }
+    // ...
   }
 }
