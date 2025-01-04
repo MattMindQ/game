@@ -4,6 +4,7 @@ import { StateManager } from '../managers/StateManager';
 import { NotificationService } from './NotificationService';
 import { GameStateMessage, GameUpdateMessage, BehaviorUpdateResponse } from './types';
 
+
 export class MessageHandler {
     constructor(private stateManager: StateManager) {}
 
@@ -32,6 +33,18 @@ export class MessageHandler {
 
         this.updateGameButton(state.is_running);
     }
+
+    public handleBehaviorList(data: { behaviors: Array<{ id: string; code: string }> }): void {
+        data.behaviors.forEach((behavior) => {
+            this.stateManager.behaviorSlice.addOrUpdateBehavior({
+                id: behavior.id,
+                name: `Behavior ${behavior.id}`,
+                code: behavior.code,
+            });
+        });
+        console.log('Available behaviors updated.');
+    }
+    
 
     public handleCombatEvent(data: { kills: Array<{ killer_team: string, victim_team: string }> }): void {
         data.kills.forEach(kill => {

@@ -1,62 +1,58 @@
-// src/types/index.ts
+// Position type for 2D coordinates
 export interface Position {
     x: number;
     y: number;
 }
 
+// Agent type for individual agents in the game
 export interface Agent {
     id: string;
-    team: 'red' | 'blue';
-    position: Position;
-    health: number;
-    target_id?: string;
-    customBehavior?: string;  // Added to track custom behavior
-    velocity?: Position;
-    rotation?: number;
+    team: 'red' | 'blue'; // Team affiliation
+    position: Position; // Current position
+    health: number; // Health percentage (0-100)
+    target_id?: string; // Current target (optional)
+    customBehavior?: string; // ID of custom behavior assigned
+    velocity?: Position; // Velocity vector (optional)
+    rotation?: number; // Rotation angle in degrees (optional)
 }
 
+// CustomBehavior type for behaviors created by the player
+export interface CustomBehavior {
+    id: string;
+    name: string; // Display name of the behavior
+    code: string; // Behavior logic as a string
+}
+
+// GameStats type for real-time game statistics
 export interface GameStats {
-    fps: number;
-    red_agents: number;
-    blue_agents: number;
-    red_kills: number;
-    blue_kills: number;
-    total_deaths: number;
+    fps: number; // Frames per second
+    red_agents: number; // Count of red team agents
+    blue_agents: number; // Count of blue team agents
+    red_kills: number; // Total kills by red team
+    blue_kills: number; // Total kills by blue team
+    total_deaths: number; // Total deaths in the game
 }
 
+// General object type for in-game world elements (e.g., walls, holes)
 export interface WorldObject {
-    name: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+    name: string; // Identifier
+    x: number; // X position
+    y: number; // Y position
+    width: number; // Width of the object
+    height: number; // Height of the object
 }
 
+// WorldState type for the game world configuration
 export interface WorldState {
-    walls: WorldObject[];
-    holes: WorldObject[];
-    colines: WorldObject[];
-    // ... etc.
+    walls: WorldObject[]; // Array of walls
+    holes: WorldObject[]; // Array of holes
+    colines: WorldObject[]; // Array of colines (custom objects)
 }
 
-export interface Wall {
-    name: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-export interface WorldState {
-    walls: Wall[];
-    holes: any[];  // Define proper type if needed
-    colines: any[];  // Define proper type if needed
-}
-
-// Update your existing StateUpdate interface if you have one
+// StateUpdate type for syncing state between frontend and backend
 export interface StateUpdate {
-    timestamp: number;
-    agents: Agent[];
-    stats: GameStats;
-    world?: WorldState;
+    timestamp: number; // Time of the update
+    agents: Agent[]; // List of agents
+    stats: GameStats; // Current game stats
+    world?: WorldState; // Current world state (optional)
 }

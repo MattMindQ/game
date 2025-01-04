@@ -145,6 +145,7 @@ class GameState:
         """Get current count of agents for a team"""
         return self.agent_state.get_team_count(team)
     
+    
     def toggle_game_state(self) -> bool:
         """Toggle game running state"""
         try:

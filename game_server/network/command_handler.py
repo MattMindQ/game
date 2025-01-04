@@ -40,7 +40,8 @@ class CommandHandler:
                 "save_config": self._handle_save_config,
                 "list_configs": self._handle_list_configs,
                 "reset_game": self._handle_reset_game,
-                "update_custom_behavior": self._handle_custom_behavior
+                "update_custom_behavior": self._handle_custom_behavior,
+                "fetch_behaviors": self._handle_fetch_behaviors,
             }
             
             handler = handlers.get(cmd_type)
@@ -206,3 +207,55 @@ class CommandHandler:
         })
 
 
+    async def _handle_custom_behavior(self, command: Dict[str, Any]) -> None:
+        """Handle custom behavior update command"""
+        agent_id = command.get("agent_id")
+        code = command.get("code")
+        behavior_id = command.get("behavior_id", f"custom-{agent_id}")
+
+        if not agent_id or not code:
+            logger.error("Missing agent_id or code")
+            await self.broadcast({
+                "type": "behavior_update",
+                "data": {"status": "error", "message": "Invalid agent_id or code"}
+            })
+            return
+        
+        success = self.behavior_manager.add_behavior(behavior_id, code)
+        if success:
+            self.behavior_manager.assign_behavior_to_agent(agent_id, behavior_id)
+        await self.broadcast({
+            "type": "behavior_update",
+            "data": {
+                "agent_id": agent_id,
+                "status": "success" if success else "error",
+                "message": None if success else "Failed to update behavior"
+            }
+        })
+
+    async def _handle_fetch_behaviors(self, command: Dict[str, Any]) -> None:
+        """Handle fetching all behaviors"""
+        behaviors = [{"id": k, "code": v} for k, v in self.behavior_manager.custom_behaviors.items()]
+        await self.broadcast({
+            "type": "behavior_list",
+            "data": {"behaviors": behaviors}
+        })
+
+    async def _handle_assign_behavior(self, command: Dict[str, Any]) -> None:
+        """Assign a behavior to an agent"""
+        agent_id = command.get("agent_id")
+        behavior_id = command.get("behavior_id")
+
+        if not agent_id or not behavior_id:
+            logger.error("Missing agent_id or behavior_id")
+            return
+        
+        success = self.behavior_manager.assign_behavior_to_agent(agent_id, behavior_id)
+        await self.broadcast({
+            "type": "behavior_assignment",
+            "data": {
+                "agent_id": agent_id,
+                "behavior_id": behavior_id,
+                "status": "success" if success else "error"
+            }
+        })

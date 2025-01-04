@@ -18,9 +18,6 @@
             <!-- Copilot trigger for agent details -->
             <div class="copilot-container"></div>
         </div>
-        <button id="toggleAgentDetails" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded mb-3">
-            Show Agent Details
-        </button>
         <div id="agentDetails" class="space-y-3">
             <!-- Basic Info -->
             <div class="bg-gray-700 rounded p-2">
@@ -33,13 +30,14 @@
                     <span id="agentHealth" class="text-white font-mono">-</span>
                 </div>
             </div>
-            
+
             <!-- Current Behavior -->
             <div class="bg-gray-700 rounded p-2">
                 <p class="text-sm text-gray-400 mb-2">Current Behavior:</p>
-                <div id="agentBehavior" class="space-y-2">
-                    <!-- Behavior details will be added here -->
-                </div>
+                <p id="currentBehaviorName" class="text-white font-mono">None</p>
+                <button id="editCurrentBehavior" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded">
+                    Edit Current Behavior
+                </button>
             </div>
 
             <!-- Combat Stats -->
@@ -56,7 +54,7 @@
             </div>
 
             <!-- Custom Behavior Editor -->
-            <div class="bg-gray-700 rounded p-2">
+            <div id="customBehaviorPanel" class="bg-gray-700 rounded p-2 hidden">
                 <p class="text-sm text-gray-400 mb-2">Custom Behavior:</p>
                 <textarea id="customBehaviorEditor" class="w-full h-24 bg-gray-800 text-white p-2 rounded resize-none" placeholder="Write your custom behavior logic here..."></textarea>
                 <div class="flex justify-end mt-2">

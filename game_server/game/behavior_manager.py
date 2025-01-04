@@ -1,111 +1,111 @@
-# game_server/game/behavior_manager.py
-import ast
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from loguru import logger
-
-class BehaviorValidator:
-    @staticmethod
-    def validate_ast(code: str) -> bool:
-        """Validate the Python code syntax and structure"""
-        try:
-            # Parse the code
-            tree = ast.parse(code)
-            
-            # Check for required function
-            has_update = False
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef) and node.name == 'update':
-                    has_update = True
-                    # Validate function parameters
-                    if len(node.args.args) != 2:
-                        logger.error("update function must have exactly 2 parameters (agent, nearby_agents)")
-                        return False
-            
-            if not has_update:
-                logger.error("Code must contain an 'update' function")
-                return False
-                
-            return True
-            
-        except SyntaxError as e:
-            logger.error(f"Syntax error in code: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error validating code: {e}")
-            return False
-
-class CustomBehavior:
-    def __init__(self, code: str):
-        self.code = code
-        self.compiled = None
-        self.globals = {}
-        
-    def compile(self) -> bool:
-        """Compile the behavior code"""
-        try:
-            self.compiled = compile(self.code, '<string>', 'exec')
-            return True
-        except Exception as e:
-            logger.error(f"Error compiling behavior: {e}")
-            return False
-            
-    def execute(self, agent: Any, nearby_agents: List[Any]) -> Dict[str, Any]:
-        """Execute the behavior code"""
-        try:
-            # Create a fresh globals dict with only necessary items
-            exec_globals = {
-                'agent': agent,
-                'nearby_agents': nearby_agents,
-            }
-            
-            # Execute the code
-            exec(self.compiled, exec_globals)
-            
-            # Call the update function
-            if 'update' in exec_globals:
-                result = exec_globals['update'](agent, nearby_agents)
-                return result if result is not None else {}
-            else:
-                logger.error("No update function found in compiled code")
-                return {}
-                
-        except Exception as e:
-            logger.error(f"Error executing behavior: {e}")
-            return {}
-
+from .vector import Vector2D
+from .models import Agent
+from .behaviors import BehaviorSystem, BaseBehavior, BehaviorContext, AwarenessSystem, WanderBehavior, WanderTogetherBehavior, AttackBehavior, FleeBehavior
+import math
+import random
 class BehaviorManager:
     def __init__(self):
-        self.behaviors: Dict[str, CustomBehavior] = {}
-        self.validator = BehaviorValidator()
-        
-    def add_behavior(self, agent_id: str, code: str) -> bool:
-        """Add or update a custom behavior for an agent"""
+        self.default_behaviors = {
+            "wander": WanderBehavior(),
+            "wander_together": WanderTogetherBehavior(),
+            "attack": AttackBehavior(),
+            "flee": FleeBehavior(),
+        }
+        self.custom_behaviors: Dict[str, str] = {}  # Maps behavior ID -> behavior code
+        self.agent_behaviors: Dict[str, str] = {}   # Maps agent ID -> behavior ID
+
+    def get_available_behaviors(self) -> List[Dict[str, str]]:
+        """Fetch all behaviors (default + custom)."""
+        behaviors = []
+        for behavior_name in self.default_behaviors:
+            behaviors.append({
+                "id": behavior_name,
+                "name": behavior_name.replace("_", " ").title(),
+                "type": "default",
+            })
+        for behavior_id, code in self.custom_behaviors.items():
+            behaviors.append({
+                "id": behavior_id,
+                "name": f"Custom Behavior {behavior_id}",
+                "type": "custom",
+                "code": code,
+            })
+        return behaviors
+
+    def add_behavior(self, behavior_id: str, behavior_code: str) -> bool:
+        """Add or update a custom behavior."""
         try:
-            # Validate code
-            if not self.validator.validate_ast(code):
-                return False
-                
-            # Create and compile behavior
-            behavior = CustomBehavior(code)
-            if not behavior.compile():
-                return False
-                
-            # Store behavior
-            self.behaviors[agent_id] = behavior
-            logger.info(f"Added custom behavior for agent {agent_id}")
+            # Validate the behavior code if needed
+            # For example, check if it's valid Python or matches expected behavior format.
+            self.custom_behaviors[behavior_id] = behavior_code
+            logger.info(f"Custom behavior {behavior_id} added/updated.")
             return True
-            
         except Exception as e:
-            logger.error(f"Error adding behavior: {e}")
+            logger.error(f"Failed to add behavior {behavior_id}: {e}")
             return False
-            
-    def get_behavior(self, agent_id: str) -> Optional[CustomBehavior]:
-        """Get custom behavior for an agent"""
-        return self.behaviors.get(agent_id)
-        
-    def remove_behavior(self, agent_id: str) -> bool:
-        """Remove custom behavior for an agent"""
-        if agent_id in self.behaviors:
-            del self.behaviors[agent_id]
+
+    def assign_behavior_to_agent(self, agent_id: str, behavior_id: str) -> bool:
+        """Assign a behavior to an agent."""
+        if behavior_id in self.default_behaviors or behavior_id in self.custom_behaviors:
+            self.agent_behaviors[agent_id] = behavior_id
+            logger.info(f"Assigned behavior {behavior_id} to agent {agent_id}.")
             return True
+        logger.error(f"Behavior {behavior_id} not found.")
         return False
+
+    def get_agent_behavior(self, agent_id: str) -> Optional[str]:
+        """Get the behavior ID currently assigned to an agent."""
+        return self.agent_behaviors.get(agent_id)
+
+    def execute_behavior(self, agent: Agent, nearby_agents: List[Agent]) -> Vector2D:
+        """Execute the behavior assigned to an agent."""
+        behavior_id = self.get_agent_behavior(agent.id)
+        if not behavior_id:
+            logger.warning(f"No behavior assigned to agent {agent.id}. Defaulting to 'wander'.")
+            behavior = self.default_behaviors["wander"]
+        elif behavior_id in self.default_behaviors:
+            behavior = self.default_behaviors[behavior_id]
+        else:
+            behavior_code = self.custom_behaviors.get(behavior_id)
+            if not behavior_code:
+                logger.warning(f"Custom behavior {behavior_id} not found. Defaulting to 'wander'.")
+                behavior = self.default_behaviors["wander"]
+            else:
+                # Dynamically execute the custom behavior
+                behavior = self._compile_and_execute_behavior(behavior_code, agent, nearby_agents)
+        
+        # Prepare the context
+        awareness = AwarenessSystem()  # or use the existing instance
+        agents_by_zone = awareness.get_agents_by_zone(agent, nearby_agents)
+        context = BehaviorContext(
+            agent=agent,
+            agents_by_zone=agents_by_zone,
+            current_behavior=behavior_id,  # Use the string ID for clarity
+            time_in_behavior=0,  # Could be tracked elsewhere
+        )
+        return behavior.execute(context)
+
+    def _compile_and_execute_behavior(self, behavior_code: str, agent: Agent, nearby_agents: List[Agent]) -> BaseBehavior:
+        """Compile and execute custom behavior code."""
+        try:
+            # Create a local context for execution
+            local_context = {
+                "Vector2D": Vector2D,
+                "math": math,
+                "random": random,
+                "Agent": Agent,
+                "logger": logger,
+                "agent": agent,
+                "nearby_agents": nearby_agents,
+            }
+            exec(behavior_code, {}, local_context)
+            behavior_class = local_context.get("CustomBehavior")
+            if not behavior_class:
+                logger.error("Custom behavior does not define 'CustomBehavior' class.")
+                return WanderBehavior()  # Fallback
+            return behavior_class()
+        except Exception as e:
+            logger.error(f"Error executing custom behavior: {e}")
+            return WanderBehavior()  # Fallback
