@@ -7,13 +7,6 @@ game_client/
 ├── index.html         # Main HTML container
 ├── public/           # Static assets
 └── src/
-    ├── components/   # UI Components
-    │   ├── AgentDetailsPanel.ts    # Agent information display
-    │   ├── BehaviorListPanel.ts    # Behavior management
-    │   ├── CodeEditor.ts           # Monaco editor wrapper
-    │   ├── ControlPanel.ts         # Game controls
-    │   ├── DebugInfo.ts           # Debug information
-    │   └── GamePanel.ts           # Main game panel
     ├── editor/
     │   └── setup.ts               # Monaco editor configuration
     ├── game/

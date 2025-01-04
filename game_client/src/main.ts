@@ -8,6 +8,7 @@ import { setupUIToggles } from './ui/toggles';
 import { setupCopilot } from './ui/copilot/setup';
 import { Copilot } from './ui/copilot/Copilot';
 import { DebugManager } from './utils/debug_check';
+import { DEFAULT_BEHAVIOR_CODE } from './editor/constants'
 
 class GameApplication {
     private stateManager: StateManager;
