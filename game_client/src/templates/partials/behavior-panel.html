@@ -1,0 +1,68 @@
+<div class="grid grid-cols-2 gap-4">
+    <!-- Behavior List Panel -->
+    <div id="behaviorListPanel" class="bg-gray-800 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-white">Behavior List</h2>
+            <!-- Copilot trigger for behavior list -->
+            <div class="copilot-container"></div>
+        </div>
+        <div id="behaviorList" class="space-y-3">
+            <!-- Behaviors will be dynamically added here -->
+        </div>
+    </div>
+
+    <!-- Agent Details Panel -->
+    <div id="agentDetailsPanel" class="bg-gray-800 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-white">Agent Details</h2>
+            <!-- Copilot trigger for agent details -->
+            <div class="copilot-container"></div>
+        </div>
+        <button id="toggleAgentDetails" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded mb-3">
+            Show Agent Details
+        </button>
+        <div id="agentDetails" class="space-y-3">
+            <!-- Basic Info -->
+            <div class="bg-gray-700 rounded p-2">
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <span class="text-gray-400">ID:</span>
+                    <span id="agentId" class="text-white font-mono">-</span>
+                    <span class="text-gray-400">Team:</span>
+                    <span id="agentTeam" class="text-white font-mono">-</span>
+                    <span class="text-gray-400">Health:</span>
+                    <span id="agentHealth" class="text-white font-mono">-</span>
+                </div>
+            </div>
+            
+            <!-- Current Behavior -->
+            <div class="bg-gray-700 rounded p-2">
+                <p class="text-sm text-gray-400 mb-2">Current Behavior:</p>
+                <div id="agentBehavior" class="space-y-2">
+                    <!-- Behavior details will be added here -->
+                </div>
+            </div>
+
+            <!-- Combat Stats -->
+            <div class="bg-gray-700 rounded p-2">
+                <p class="text-sm text-gray-400 mb-2">Combat Stats:</p>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <span class="text-white">Kills:</span>
+                    <span id="agentKills" class="text-white font-mono">0</span>
+                    <span class="text-white">Damage Dealt:</span>
+                    <span id="agentDamageDealt" class="text-white font-mono">0</span>
+                    <span class="text-white">Damage Taken:</span>
+                    <span id="agentDamageTaken" class="text-white font-mono">0</span>
+                </div>
+            </div>
+
+            <!-- Custom Behavior Editor -->
+            <div class="bg-gray-700 rounded p-2">
+                <p class="text-sm text-gray-400 mb-2">Custom Behavior:</p>
+                <textarea id="customBehaviorEditor" class="w-full h-24 bg-gray-800 text-white p-2 rounded resize-none" placeholder="Write your custom behavior logic here..."></textarea>
+                <div class="flex justify-end mt-2">
+                    <button id="saveCustomBehavior" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

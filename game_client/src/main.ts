@@ -7,6 +7,7 @@ import { setupUIToggles } from './ui/toggles';
 import { setupCopilot } from './ui/copilot/setup';
 import { DebugManager } from './utils/debug_check';
 import { EditorManager } from './editor/EditorManager';
+import { TemplateLoader } from './utils/templateLoader';
 
 class GameApplication {
     private stateManager: StateManager;
@@ -17,19 +18,33 @@ class GameApplication {
     private debugManager: DebugManager;
 
     constructor() {
-        // Initialize core components
-        this.stateManager = new StateManager();
-        this.game = new Game(this.stateManager);
-        this.connection = new GameConnection(this.stateManager);
-        this.userInputManager = new UserInputManager(this.stateManager);
-        
-        // Initialize debug manager
-        this.debugManager = new DebugManager(this.stateManager);
-        this.connection.setDebugManager(this.debugManager);
-
-        // Initialize editor
-        this.editorManager = new EditorManager(this.stateManager);
-        this.initializeComponents();
+        this.initialize();
+    }
+    
+    private async initialize() {
+        try {
+            // Load all HTML partials first
+            await TemplateLoader.loadPartials();
+    
+            // Initialize core components
+            this.stateManager = new StateManager();
+            this.game = new Game(this.stateManager);
+            this.connection = new GameConnection(this.stateManager);
+            this.userInputManager = new UserInputManager(this.stateManager);
+            
+            // Initialize debug manager
+            this.debugManager = new DebugManager(this.stateManager);
+            this.connection.setDebugManager(this.debugManager);
+    
+            // Initialize editor
+            this.editorManager = new EditorManager(this.stateManager);
+            
+            // Continue with component initialization
+            await this.initializeComponents();
+        } catch (error) {
+            console.error('Failed to initialize application:', error);
+            // You might want to show a user-friendly error message here
+        }
     }
 
     private async initializeComponents() {

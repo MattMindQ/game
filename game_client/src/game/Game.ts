@@ -195,7 +195,10 @@ export class Game {
     public pause() {
         this.isRunning = false;
         this.stateManager.setGameRunning(false);
-    }
+      
+        this.sendCommand({ type: 'toggle_game' });
+      }
+      
 
     public togglePause() {
         if (this.isRunning) {

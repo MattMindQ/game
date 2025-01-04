@@ -9,326 +9,28 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-900 min-h-screen">
-    <!-- Main Application Container -->
     <div id="app" class="relative">
         <div class="container mx-auto p-4">
             <!-- Main Game Area -->
-            <div class="flex gap-4 mb-4">
-                <!-- Game Panel -->
-                <div id="gamePanel" class="w-2/3">
-                    <div class="mb-4 flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <h1 class="text-2xl font-bold text-white">Game Simulation</h1>
-                            <!-- Copilot trigger for main game -->
-                            <div class="copilot-container"></div>
-                        </div>
-                        <span class="text-gray-400">
-                            Status: <span id="connectionStatus" class="text-yellow-500">Connecting...</span>
-                        </span>
-                    </div>
-
-<!-- Replace the existing game config div with this -->
-<div class="bg-gray-800 rounded-lg p-4 mb-4">
-  <div class="flex justify-between items-center mb-4">
-      <div class="flex items-center gap-3">
-          <h2 class="text-lg font-bold text-white">Game Configuration</h2>
-          <div class="copilot-container"></div>
-      </div>
-      <div class="flex gap-2">
-          <button id="saveConfigButton" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-              Save Config
-          </button>
-          <button id="toggleGameConfigButton" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-              Toggle Settings
-          </button>
-      </div>
-  </div>
-
-  <!-- Saved Configs List -->
-  <div class="mb-4">
-      <div class="flex items-center justify-between mb-2">
-          <h3 class="text-white font-medium">Saved Configurations</h3>
-          <span id="activeConfigName" class="text-sm text-blue-400">Default Configuration</span>
-      </div>
-      <div id="savedConfigs" class="grid grid-cols-2 gap-2 mb-4">
-          <!-- Saved configs will be added here dynamically -->
-      </div>
-  </div>
-
-  <!-- Config Parameters -->
-  <div id="gameConfig" class="space-y-4">
-      <!-- Game Settings -->
-      <div class="border-b border-gray-700 pb-4">
-          <h3 class="text-white font-medium mb-3">Game Settings</h3>
-          <div class="grid grid-cols-2 gap-4">
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Number of Agents:</span>
-                  <input type="number" id="agentCount" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="agentCount">
-              </label>
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Game Area Size:</span>
-                  <input type="number" id="gameAreaSize" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="gameAreaSize">
-              </label>
-          </div>
-      </div>
-
-      <!-- Combat Settings -->
-      <div class="border-b border-gray-700 pb-4">
-          <h3 class="text-white font-medium mb-3">Combat Settings</h3>
-          <div class="grid grid-cols-2 gap-4">
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Visual Range:</span>
-                  <input type="number" id="visualRange" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="visualRange">
-              </label>
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Recognition Range:</span>
-                  <input type="number" id="recognitionRange" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="recognitionRange">
-              </label>
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Combat Range:</span>
-                  <input type="number" id="combatRange" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="combatRange">
-              </label>
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Base Damage:</span>
-                  <input type="number" id="baseDamage" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="baseDamage">
-              </label>
-          </div>
-      </div>
-
-      <!-- Movement Settings -->
-      <div class="border-b border-gray-700 pb-4">
-          <h3 class="text-white font-medium mb-3">Movement Settings</h3>
-          <div class="grid grid-cols-2 gap-4">
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Base Speed:</span>
-                  <input type="number" id="baseSpeed" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="baseSpeed">
-              </label>
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Turn Speed:</span>
-                  <input type="number" id="turnSpeed" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="turnSpeed">
-              </label>
-          </div>
-      </div>
-
-      <!-- World Settings -->
-      <div class="border-b border-gray-700 pb-4">
-          <h3 class="text-white font-medium mb-3">World Settings</h3>
-          <div class="grid grid-cols-2 gap-4">
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Obstacle Count:</span>
-                  <input type="number" id="obstacleCount" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="obstacleCount">
-              </label>
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Obstacle Size:</span>
-                  <input type="number" id="obstacleSize" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="obstacleSize">
-              </label>
-              <div class="col-span-2">
-                  <label class="flex items-center text-gray-300">
-                      <input type="checkbox" id="enableWorldLogic" class="mr-2" data-config-key="enableWorldLogic">
-                      <span>Enable World Logic (Obstacles & Walls)</span>
-                  </label>
-              </div>
-          </div>
-      </div>
-
-      <!-- Team Settings -->
-      <div>
-          <h3 class="text-white font-medium mb-3">Team Settings</h3>
-          <div class="grid grid-cols-2 gap-4">
-              <label class="flex flex-col text-gray-300">
-                  <span class="mb-1">Team Balance:</span>
-                  <input type="range" id="teamBalance" min="-1" max="1" step="0.1" 
-                         class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="teamBalance">
-              </label>
-              <div class="flex flex-col">
-                  <label class="flex items-center text-gray-300 mb-2">
-                      <input type="checkbox" id="respawnEnabled" class="mr-2" data-config-key="respawnEnabled">
-                      <span>Enable Respawn</span>
-                  </label>
-                  <label class="flex flex-col text-gray-300">
-                      <span class="mb-1">Respawn Time (ms):</span>
-                      <input type="number" id="respawnTime" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="respawnTime">
-                  </label>
-              </div>
-          </div>
-      </div>
-  </div>
-</div>
-
-                    <!-- Game Canvas -->
-                    <div class="bg-gray-800 rounded-lg shadow-xl overflow-hidden">
-                        <canvas id="gameCanvas" class="block w-full bg-gray-700"></canvas>
-                    </div>
+            <div class="flex flex-row gap-4 mb-4">
+                <!-- Left Column: Game Panel -->
+                <div id="gamePanel" class="flex-grow">
+                    <div data-partial="game-panel/header"></div>
+                    <div data-partial="game-panel/config"></div>
+                    <div data-partial="game-panel/canvas"></div>
                 </div>
 
-                <!-- Controls Panel -->
-                <div id="controlPanel" class="w-1/3 space-y-4">
-                    <!-- Game Controls -->
-                    <div id="gameControls" class="bg-gray-800 rounded-lg p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-bold text-white">Game Controls</h2>
-                            <!-- Copilot trigger for controls -->
-                            <div class="copilot-container"></div>
-                        </div>
-                        <div class="flex gap-2 mb-4">
-                            <button id="toggleGameButton" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">Start</button>
-                            <button id="resetButton" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Reset</button>
-                        </div>
-                        <div class="flex gap-2">
-                            <button id="addRedAgent" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded flex-1">
-                                Add Red <span id="redAgentCount" class="ml-2 bg-red-800 px-2 rounded">0</span>
-                            </button>
-                            <button id="addBlueAgent" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded flex-1">
-                                Add Blue <span id="blueAgentCount" class="ml-2 bg-blue-800 px-2 rounded">0</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Display Options -->
-                    <div id="displayOptions" class="bg-gray-800 rounded-lg p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-bold text-white">Display</h2>
-                            <!-- Copilot trigger for display options -->
-                            <div class="copilot-container"></div>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="flex items-center text-gray-300">
-                                <input type="checkbox" id="showGrid" class="mr-2" checked>
-                                Show Grid
-                            </label>
-                            <label class="flex items-center text-gray-300">
-                                <input type="checkbox" id="showDebugInfo" class="mr-2" checked>
-                                Show Debug Info
-                            </label>
-                            <label class="flex items-center text-gray-300">
-                                <input type="checkbox" id="showZones" class="mr-2">
-                                Show Awareness Zones
-                            </label>
-                        </div>
-                        <!-- Zone Colors Legend -->
-                        <div class="mt-3 pt-3 border-t border-gray-700">
-                            <p class="text-sm text-gray-400 mb-2">Zone Colors:</p>
-                            <div class="space-y-1">
-                                <div class="flex items-center text-sm">
-                                    <span class="w-3 h-3 rounded-full bg-blue-500 opacity-20 mr-2"></span>
-                                    <span class="text-gray-300">Visual Range (150)</span>
-                                </div>
-                                <div class="flex items-center text-sm">
-                                    <span class="w-3 h-3 rounded-full bg-yellow-500 opacity-20 mr-2"></span>
-                                    <span class="text-gray-300">Recognition Range (100)</span>
-                                </div>
-                                <div class="flex items-center text-sm">
-                                    <span class="w-3 h-3 rounded-full bg-red-500 opacity-20 mr-2"></span>
-                                    <span class="text-gray-300">Combat Range (30)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Debug Info -->
-                    <div id="debugInfo" class="bg-gray-800 rounded-lg p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-lg font-bold text-white">Debug</h2>
-                            <!-- Copilot trigger for debug -->
-                            <div class="copilot-container"></div>
-                        </div>
-                        <div class="space-y-2">
-                            <div class="bg-gray-700 rounded p-2">
-                                <p class="text-sm text-gray-400">Selected Agent:</p>
-                                <p id="selectedAgent" class="text-white font-mono text-sm">None</p>
-                            </div>
-                            <div class="bg-gray-700 rounded p-2">
-                                <p class="text-sm text-gray-400">Mouse Position:</p>
-                                <p id="mousePosition" class="text-white font-mono text-sm">x: 0, y: 0</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Right Column: Control Panel -->
+                <div data-partial="control-panel"></div>
             </div>
 
-            <!-- Behavior and Agent Details Section -->
-            <div class="grid grid-cols-2 gap-4">
-                <!-- Behavior List Panel -->
-                <div id="behaviorListPanel" class="bg-gray-800 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-lg font-bold text-white">Behavior List</h2>
-                        <!-- Copilot trigger for behavior list -->
-                        <div class="copilot-container"></div>
-                    </div>
-                    <div id="behaviorList" class="space-y-3">
-                        <!-- Behaviors will be dynamically added here -->
-                    </div>
-                </div>
+            <!-- Behavior and Agent Details -->
+            <div data-partial="behavior-panel"></div>
 
-                <!-- Agent Details Panel -->
-                <div id="agentDetailsPanel" class="bg-gray-800 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-lg font-bold text-white">Agent Details</h2>
-                        <!-- Copilot trigger for agent details -->
-                        <div class="copilot-container"></div>
-                    </div>
-                    <button id="toggleAgentDetails" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded mb-3">
-                        Show Agent Details
-                    </button>
-                    <div id="agentDetails" class="space-y-3">
-                        <!-- Basic Info -->
-                        <div class="bg-gray-700 rounded p-2">
-                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                <span class="text-gray-400">ID:</span>
-                                <span id="agentId" class="text-white font-mono">-</span>
-                                <span class="text-gray-400">Team:</span>
-                                <span id="agentTeam" class="text-white font-mono">-</span>
-                                <span class="text-gray-400">Health:</span>
-                                <span id="agentHealth" class="text-white font-mono">-</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Current Behavior -->
-                        <div class="bg-gray-700 rounded p-2">
-                            <p class="text-sm text-gray-400 mb-2">Current Behavior:</p>
-                            <div id="agentBehavior" class="space-y-2">
-                                <!-- Behavior details will be added here -->
-                            </div>
-                        </div>
-
-                        <!-- Combat Stats -->
-                        <div class="bg-gray-700 rounded p-2">
-                            <p class="text-sm text-gray-400 mb-2">Combat Stats:</p>
-                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                <span class="text-white">Kills:</span>
-                                <span id="agentKills" class="text-white font-mono">0</span>
-                                <span class="text-white">Damage Dealt:</span>
-                                <span id="agentDamageDealt" class="text-white font-mono">0</span>
-                                <span class="text-white">Damage Taken:</span>
-                                <span id="agentDamageTaken" class="text-white font-mono">0</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Code Editor Section -->
-            <div class="bg-gray-800 rounded-lg shadow-xl overflow-hidden mt-4">
-                <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-                    <div class="flex items-center gap-4">
-                        <h2 class="text-xl font-bold text-white">Custom Behavior</h2>
-                        <span id="editorStatus" class="text-gray-400 text-sm">No agent selected</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <!-- Copilot trigger for code editor -->
-                        <div class="copilot-container"></div>
-                        <button id="toggleCodeEditor" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded">
-                            Show Editor
-                        </button>
-                        <button id="applyCode" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-                            Apply Changes
-                        </button>
-                    </div>
-                </div>
-                <div id="codeEditor" class="h-64"></div>
-            </div>
+            <!-- Code Editor -->
+            <div data-partial="code-editor"></div>
         </div>
-
+        
         <!-- Copilot Window Container -->
         <div id="copilotContainer"></div>
     </div>
@@ -339,6 +41,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/editor/editor.main.nls.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/editor/editor.main.min.js"></script>
 
+    <!-- Application Script -->
     <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
