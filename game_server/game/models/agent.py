@@ -1,3 +1,18 @@
+import math
+import random
+import uuid
+from typing import Dict, List, Optional, Any, Tuple
+from loguru import logger
+from ..behaviors import BehaviorSystem
+from ..vector import Vector2D
+from ..world.world import World
+from .stats import CombatStats, MovementStats
+from .physics import Physics
+# import the right libraries of time 
+import time
+
+
+
 class Agent:
     def __init__(self, team: str, position: Vector2D, world: World, bounds: Tuple[float, float, float, float]):
         self.id: str = str(uuid.uuid4())
@@ -47,7 +62,6 @@ class Agent:
         self.physics.velocity = value
 
     def update_behavior(self, nearby_agents: List['Agent']) -> None:
-        """Update only behavior decisions"""
         try:
             behavior_force = self.behavior_system.update(self, nearby_agents)
             self.physics.stored_force = behavior_force
@@ -58,31 +72,16 @@ class Agent:
                     distance = (target.position - self.position).magnitude()
                     if distance <= self.combat.attack_range:
                         self.attack(target)
-                        
         except Exception as e:
             logger.error(f"Error updating agent behavior {self.id}: {e}")
 
     def update_position(self) -> None:
-        """Update position based on physics"""
         try:
             self.physics.update(self.movement)
         except Exception as e:
             logger.error(f"Error updating agent position {self.id}: {e}")
 
-    def handle_combat(self, all_agents: List['Agent']) -> None:
-        """Handle combat interactions"""
-        try:
-            if self.target_id:
-                target = next((a for a in all_agents if a.id == self.target_id), None)
-                if target and self.combat.can_attack():
-                    distance = (target.position - self.position).magnitude()
-                    if distance <= self.combat.attack_range:
-                        self.attack(target)
-        except Exception as e:
-            logger.error(f"Error in combat handling for agent {self.id}: {e}")
-
     def attack(self, target: 'Agent') -> bool:
-        """Perform attack on target"""
         try:
             if not self.combat.can_attack():
                 return False
@@ -94,13 +93,11 @@ class Agent:
                 logger.info(f"Agent {self.id} killed agent {target.id}")
                 
             return was_fatal
-            
         except Exception as e:
             logger.error(f"Error in attack from agent {self.id} to {target.id}: {e}")
             return False
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert agent state to dictionary for serialization"""
         try:
             return {
                 "id": self.id,
@@ -119,6 +116,3 @@ class Agent:
                 "id": self.id,
                 "error": str(e)
             }
-
-    def __str__(self) -> str:
-        return f"Agent(id={self.id[:8]}, team={self.team}, health={self.combat.health:.1f}%, behavior={self.current_behavior})"

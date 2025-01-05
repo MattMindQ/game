@@ -4,7 +4,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Set, Dict, Any
 import json
 from loguru import logger
-from game.state_manager import GameState
+from game.state.game_state_manager import GameStateManager  # Updated import
 from game.loop import GameLoop
 from game.behavior_manager import BehaviorManager
 from llm.llm_call import LLMService
@@ -20,16 +20,16 @@ class ConnectionManager:
     def initialize_services(self):
         """Initialize or reinitialize all services"""
         # Initialize core services
-        self.game_state = GameState()
+        self.game_state_manager = GameStateManager(bounds=(0, 0, 800, 600))  # Use GameStateManager
         self.behavior_manager = BehaviorManager()
         self.llm_service = LLMService()
         
         # Initialize game loop with broadcast callback
-        self.game_loop = GameLoop(self.game_state, self.broadcast)
+        self.game_loop = GameLoop(self.game_state_manager, self.broadcast)
         
         # Initialize command handler
         self.command_handler = CommandHandler(
-            game_state=self.game_state,
+            game_state_manager=self.game_state_manager,
             game_loop=self.game_loop,
             behavior_manager=self.behavior_manager,
             llm_service=self.llm_service,
@@ -50,10 +50,7 @@ class ConnectionManager:
             # Send initial state
             initial_state = {
                 "type": "game_state",
-                "data": {
-                    **self.game_state.get_state_update(),
-                    "agents": [agent.to_dict() for agent in self.game_state.agents.values()]
-                }
+                "data": self.game_state_manager.get_state_update()  # Use GameStateManager's method
             }
             await websocket.send_json(initial_state)
             logger.debug(f"Sent initial state: {initial_state}")
@@ -81,10 +78,7 @@ class ConnectionManager:
             # Broadcast new state to all clients
             await self.broadcast({
                 "type": "game_state",
-                "data": {
-                    **self.game_state.get_state_update(),
-                    "agents": []
-                }
+                "data": self.game_state_manager.get_state_update()  # Updated reset state
             })
         else:
             await self.command_handler.handle_command(command)
@@ -118,10 +112,6 @@ class ConnectionManager:
         # Clean up disconnected clients
         for connection in disconnected:
             await self.disconnect(connection)
-
-    async def handle_command(self, command: Dict[str, Any]) -> None:
-        """Route command to command handler"""
-        await self.command_handler.handle_command(command)
 
 manager = ConnectionManager()
 

@@ -2,20 +2,21 @@
 
 from typing import Dict, Any, Optional, Callable
 from loguru import logger
-from game.state_manager import GameState
+from game.state.game_state_manager import GameStateManager  # Updated import
 from game.loop import GameLoop
 from game.behavior_manager import BehaviorManager
 from llm.llm_call import LLMService
 import json
 
+
 class CommandHandler:
-    def __init__(self, 
-                 game_state: GameState,
+    def __init__(self,
+                 game_state_manager: GameStateManager,
                  game_loop: GameLoop,
                  behavior_manager: BehaviorManager,
                  llm_service: LLMService,
                  broadcast_callback: Callable):
-        self.game_state = game_state
+        self.game_state_manager = game_state_manager
         self.game_loop = game_loop
         self.behavior_manager = behavior_manager
         self.llm_service = llm_service
@@ -30,7 +31,7 @@ class CommandHandler:
                 return
 
             logger.debug(f"Handling command: {cmd_type}")
-            
+
             # Route to appropriate handler
             handlers = {
                 "toggle_game": self._handle_toggle_game,
@@ -43,7 +44,7 @@ class CommandHandler:
                 "update_custom_behavior": self._handle_custom_behavior,
                 "fetch_behaviors": self._handle_fetch_behaviors,
             }
-            
+
             handler = handlers.get(cmd_type)
             if handler:
                 await handler(command)
@@ -55,15 +56,16 @@ class CommandHandler:
 
     async def _handle_toggle_game(self, command: Dict[str, Any]) -> None:
         """Handle game toggle command"""
-        is_running = self.game_state.toggle_game_state()
+        self.game_state_manager.is_running = not self.game_state_manager.is_running
         await self._broadcast_game_state()
-        logger.info(f"Game state toggled: {'running' if is_running else 'stopped'}")
+        logger.info(f"Game state toggled: {'running' if self.game_state_manager.is_running else 'stopped'}")
 
     async def _handle_add_agent(self, command: Dict[str, Any]) -> None:
         """Handle agent addition command"""
         team = command.get("team")
+        position = command.get("position", {"x": 0, "y": 0})
         if team in ["red", "blue"]:
-            agent_id = self.game_state.add_agent(team)
+            agent_id = self.game_state_manager.agent_state.add_agent(team=team, position=position)
             logger.info(f"Added agent {agent_id} to team {team}")
             await self._broadcast_game_state()
         else:
@@ -85,13 +87,13 @@ class CommandHandler:
             # Parse context if string
             if isinstance(context, str):
                 context = json.loads(context)
-            
+
             result = await self.llm_service.process_copilot_query(query, context)
-            
+
             # Handle reformulation
             if result.get("reformulation"):
                 await self._broadcast_llm_response(conversation_id, result["reformulation"])
-            
+
             # Handle code
             if result.get("code"):
                 code_response = f"Here's the code:\n```python\n{result['code']}\n```"
@@ -104,7 +106,7 @@ class CommandHandler:
     async def _handle_load_config(self, command: Dict[str, Any]) -> None:
         """Handle config loading command"""
         config_id = command.get("config_id")
-        if await self.game_state.load_config(config_id):
+        if await self.game_state_manager.config_state.load_config(config_id):
             await self._broadcast_game_state()
             await self.broadcast({
                 "type": "config_loaded",
@@ -115,9 +117,9 @@ class CommandHandler:
         """Handle config saving command"""
         config_data = command.get("config")
         if config_data:
-            config_id = await self.game_state.config_service.save_config(
+            config_id = await self.game_state_manager.config_state.config_service.save_config(
                 config_data,
-                self.game_state.active_user_id
+                self.game_state_manager.config_state.get_value().active_user_id
             )
             await self.broadcast({
                 "type": "config_saved",
@@ -126,8 +128,8 @@ class CommandHandler:
 
     async def _handle_list_configs(self, command: Dict[str, Any]) -> None:
         """Handle config listing command"""
-        configs = await self.game_state.config_service.list_configs(
-            self.game_state.active_user_id
+        configs = await self.game_state_manager.config_state.config_service.list_configs(
+            self.game_state_manager.config_state.get_value().active_user_id
         )
         await self.broadcast({
             "type": "config_list",
@@ -136,51 +138,15 @@ class CommandHandler:
 
     async def _handle_reset_game(self, command: Dict[str, Any]) -> None:
         """Handle game reset command"""
-        try:
-            # Stop current game loop
-            await self.game_loop.stop()
-            
-            # Create new game state
-            self.game_state = GameState()
-            await self.game_state.initialize()  # Initialize the new state
-            
-            # Create new game loop
-            self.game_loop = GameLoop(self.game_state, self.broadcast)
-            
-            # Start if there are active connections
-            if self.game_loop is not None:
-                await self.game_loop.start()
-                
-            # Broadcast new state
-            await self._broadcast_game_state()
-            logger.info("Game reset successfully")
-            
-        except Exception as e:
-            logger.error(f"Error resetting game: {e}")
-            raise
-
-    async def _handle_custom_behavior(self, command: Dict[str, Any]) -> None:
-        """Handle custom behavior update command"""
-        agent_id = command.get("agent_id")
-        code = command.get("code")
-        
-        if not agent_id or not code:
-            logger.error("Missing agent_id or code")
-            return
-            
-        success = self.behavior_manager.add_behavior(agent_id, code)
-        await self.broadcast({
-            "type": "behavior_update",
-            "data": {
-                "agent_id": agent_id,
-                "status": "success" if success else "error",
-                "message": None if success else "Failed to update behavior"
-            }
-        })
+        await self.game_loop.stop()
+        await self.game_state_manager.initialize()
+        await self.game_loop.start()
+        await self._broadcast_game_state()
+        logger.info("Game reset successfully")
 
     async def _broadcast_game_state(self) -> None:
         """Helper to broadcast game state"""
-        state_update = self.game_state.get_state_update()
+        state_update = self.game_state_manager.get_state_update()
         await self.broadcast({
             "type": "game_state",
             "data": state_update
@@ -206,7 +172,6 @@ class CommandHandler:
             }
         })
 
-
     async def _handle_custom_behavior(self, command: Dict[str, Any]) -> None:
         """Handle custom behavior update command"""
         agent_id = command.get("agent_id")
@@ -220,7 +185,7 @@ class CommandHandler:
                 "data": {"status": "error", "message": "Invalid agent_id or code"}
             })
             return
-        
+
         success = self.behavior_manager.add_behavior(behavior_id, code)
         if success:
             self.behavior_manager.assign_behavior_to_agent(agent_id, behavior_id)
@@ -234,28 +199,20 @@ class CommandHandler:
         })
 
     async def _handle_fetch_behaviors(self, command: Dict[str, Any]) -> None:
-        """Handle fetching all behaviors"""
-        behaviors = [{"id": k, "code": v} for k, v in self.behavior_manager.custom_behaviors.items()]
-        await self.broadcast({
-            "type": "behavior_list",
-            "data": {"behaviors": behaviors}
-        })
-
-    async def _handle_assign_behavior(self, command: Dict[str, Any]) -> None:
-        """Assign a behavior to an agent"""
-        agent_id = command.get("agent_id")
-        behavior_id = command.get("behavior_id")
-
-        if not agent_id or not behavior_id:
-            logger.error("Missing agent_id or behavior_id")
-            return
-        
-        success = self.behavior_manager.assign_behavior_to_agent(agent_id, behavior_id)
-        await self.broadcast({
-            "type": "behavior_assignment",
-            "data": {
-                "agent_id": agent_id,
-                "behavior_id": behavior_id,
-                "status": "success" if success else "error"
-            }
-        })
+        """Handle fetching all available behaviors."""
+        try:
+            # Fetch behaviors from the behavior manager
+            behaviors = self.behavior_manager.get_available_behaviors()
+            
+            # Broadcast behaviors to the client
+            await self.broadcast({
+                "type": "behavior_list",
+                "data": {"behaviors": behaviors}
+            })
+            logger.info(f"Fetched and broadcasted {len(behaviors)} behaviors.")
+        except Exception as e:
+            logger.error(f"Error fetching behaviors: {e}")
+            await self.broadcast({
+                "type": "error",
+                "data": {"message": "Failed to fetch behaviors"}
+            })

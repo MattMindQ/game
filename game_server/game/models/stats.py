@@ -1,6 +1,6 @@
-# game/models/stats.py
+# game_server/game/models/stats.py
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Any
+from typing import Dict, Any
 import time
 
 @dataclass
@@ -21,17 +21,30 @@ class GameStats:
         }
 
 @dataclass
-class DeadAgent:
-    id: str
-    team: str
-    killer_team: Optional[str]
-    lifetime: float
-    death_time: float = field(default_factory=time.time)
+class CombatStats:
+    max_health: float = 100
+    health: float = 100
+    attack_damage: float = 15
+    attack_range: float = 30
+    attack_cooldown: float = 1.0
+    last_attack_time: float = field(default_factory=time.time)
+    
+    def is_alive(self) -> bool:
+        return self.health > 0
+    
+    def can_attack(self) -> bool:
+        return time.time() - self.last_attack_time >= self.attack_cooldown
+    
+    def take_damage(self, damage: float) -> bool:
+        self.health = max(0, self.health - damage)
+        return not self.is_alive()
+    
+    def get_health_percentage(self) -> float:
+        return (self.health / self.max_health) * 100
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "team": self.team,
-            "killer_team": self.killer_team,
-            "lifetime": self.lifetime,
-        }
+@dataclass
+class MovementStats:
+    max_speed: float = 3.0
+    max_force: float = 0.5
+    awareness_radius: float = 100
+    perception_radius: float = 50

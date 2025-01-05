@@ -1,4 +1,4 @@
-# game_server/game/state.py
+# game_server/game/state_manager.py
 
 import time
 from typing import Dict, Any, List, Optional
