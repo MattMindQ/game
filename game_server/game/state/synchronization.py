@@ -58,19 +58,22 @@ class StateSynchronizer(IStateSynchronizer):
         try:
             updates = {}
             for state_id, sync in self._syncs.items():
-                if sync.pending_changes:
-                    state = self.state_manager._states.get(state_id)
-                    if not state:
-                        logger.warning(f"State {state_id} not found in state manager")
-                        continue
-                    update_data = {
-                        "value": state.get_value(),
-                        "version": sync.version,
-                        "timestamp": sync.last_sync.timestamp()
-                    }
-                    logger.debug(f"Delta update for state {state_id}: {update_data}")
-                    updates[str(state_id)] = update_data
-                    sync.pending_changes = False
+                state = self.state_manager._states.get(state_id)
+                if not state:
+                    logger.warning(f"State {state_id} not found in state manager")
+                    continue
+                
+                # Get the actual state value
+                state_value = state.get_value()
+                
+                update_data = {
+                    "value": state_value,
+                    "version": sync.version,
+                    "timestamp": sync.last_sync.timestamp()
+                }
+                logger.debug(f"Delta update for state {state_id}: {update_data}")
+                updates[str(state_id)] = update_data
+                
             logger.debug(f"Total updates prepared: {len(updates)}")
             return updates
         except Exception as e:

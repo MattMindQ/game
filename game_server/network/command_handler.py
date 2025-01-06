@@ -7,6 +7,8 @@ from game.loop import GameLoop
 from game.behavior_manager import BehaviorManager
 from llm.llm_call import LLMService
 import json
+from game.vector import Vector2D  # or wherever Vector2D is actually located
+
 
 
 class CommandHandler:
@@ -63,13 +65,25 @@ class CommandHandler:
     async def _handle_add_agent(self, command: Dict[str, Any]) -> None:
         """Handle agent addition command"""
         team = command.get("team")
-        position = command.get("position", {"x": 0, "y": 0})
+        pos_dict = command.get("position")  # Now optional
+
+        # Retrieve world component
+        world = self.game_state_manager.world_state.get_value().world_component
+
         if team in ["red", "blue"]:
-            agent_id = self.game_state_manager.agent_state.add_agent(team=team, position=position)
+            # Convert position dict to Vector2D only if provided
+            position = Vector2D(pos_dict["x"], pos_dict["y"]) if pos_dict else None
+            
+            agent_id = self.game_state_manager.agent_state.add_agent(
+                team=team,
+                world=world,
+                position=position  # Pass None if no position provided
+            )
             logger.info(f"Added agent {agent_id} to team {team}")
             await self._broadcast_game_state()
         else:
             logger.error(f"Invalid team: {team}")
+
 
     async def _handle_llm_query(self, command: Dict[str, Any]) -> None:
         """Handle LLM query command"""

@@ -1,17 +1,18 @@
-# Game Server Architecture Documentation
+# Game Engine Architecture Documentation
 
 ## Overview
-The game server implements a modular state management system integrated with WebSocket communication for real-time multiplayer gameplay. The architecture separates concerns between state management, network communication, and command handling.
+The game server implements a modular state management system integrated with WebSocket communication for real-time multiplayer gameplay. The architecture separates concerns between state management, behavior systems, network communication, and command handling.
 
 ## State Management Architecture
 
 ### Core Components
 
-#### GameState
+#### GameStateManager
 The central state manager that orchestrates all game state components:
 - Maintains game running state
 - Coordinates between specialized state modules
 - Handles high-level game flow
+- Manages state synchronization
 - Provides backward compatibility layer
 
 #### Specialized State Modules
@@ -37,18 +38,103 @@ The central state manager that orchestrates all game state components:
 
 4. **AgentState**
 - Manages agent lifecycle
-- Controls agent behaviors
 - Handles agent updates
 - Tracks team assignments
+- Coordinates with behavior state
+
+5. **BehaviorState** (New)
+- Manages agent behaviors
+- Tracks behavior timers
+- Handles behavior transitions
+- Maintains awareness zones
+- Coordinates decision making
 
 ### State Flow
 ```
-GameState
+GameStateManager
 ├─► ConfigState ──► Agent Configuration
 ├─► WorldState ──► Physics & Collisions
 ├─► CombatState ─► Combat Resolution
-└─► AgentState ──► Agent Management
+├─► AgentState ──► Agent Management
+└─► BehaviorState ─► Behavior Management
 ```
+
+## Behavior System Architecture
+
+### Core Components
+
+#### BehaviorState
+- Manages behavior states for all agents
+- Tracks behavior execution time
+- Handles behavior transitions
+- Maintains behavior configuration
+
+#### BehaviorExecutor
+- Executes behavior logic
+- Calculates movement forces
+- Handles zone-based decisions
+- Manages behavior context
+
+#### DecisionMaker
+- Evaluates agent context
+- Determines optimal behaviors
+- Handles behavior priorities
+- Manages behavior transitions
+
+### Behavior Types
+1. **WANDER**
+   - Default exploration behavior
+   - Random movement patterns
+   - Boundary awareness
+
+2. **WANDER_TOGETHER**
+   - Group-based movement
+   - Ally proximity maintenance
+   - Combined wandering
+
+3. **ATTACK**
+   - Combat engagement
+   - Target pursuit
+   - Attack range management
+
+4. **FLEE**
+   - Threat avoidance
+   - Health-based retreat
+   - Strategic positioning
+
+### Awareness System
+```
+Zone Types:
+├─► Visual (150 units)
+├─► Recognition (100 units)
+└─► Combat (30 units)
+
+Priority Order:
+1. Survival (Flee)
+2. Combat (Attack)
+3. Group (Wander Together)
+4. Default (Wander)
+```
+
+## Game Loop Integration
+
+### Update Cycle
+```
+Game Loop
+├─► State Updates
+│   ├─► Get Agents
+│   ├─► Update Behaviors
+│   ├─► Update Physics
+│   └─► Update Combat
+├─► State Synchronization
+└─► State Broadcasting
+```
+
+### Timing
+- Fixed update interval
+- Behavior timer tracking
+- Combat cooldown management
+- State sync scheduling
 
 ## WebSocket Architecture
 
@@ -87,6 +173,7 @@ Client ─► WebSocket ─► CommandHandler ─► GameState
 3. Behavior
    - update_custom_behavior
    - force_behavior
+   - fetch_behaviors
 
 4. LLM Integration
    - llm_query
@@ -94,22 +181,14 @@ Client ─► WebSocket ─► CommandHandler ─► GameState
 ## State Synchronization
 
 ### Update Cycle
-1. State Update Generation
 ```python
 state_update = {
     "timestamp": current_timestamp,
     "agents": agent_states,
+    "behaviors": behavior_states,
     "stats": game_stats,
     "world": world_state
 }
-```
-
-2. Event Broadcasting
-```python
-await broadcast({
-    "type": "game_update",
-    "data": state_update
-})
 ```
 
 ### State Types
@@ -126,7 +205,7 @@ interface GameState {
     timestamp: number;
     world: WorldState;
     config: ConfigState;
-    user: UserState;
+    behaviors: BehaviorState;
 }
 ```
 
@@ -136,62 +215,64 @@ interface AgentState {
     id: string;
     team: string;
     position: Vector2D;
-    behavior: string;
+    velocity: Vector2D;
     health: number;
-    // ... other properties
+    behavior: string;
+    target_id?: string;
 }
 ```
 
-## Error Handling
-
-### Network Layer
-- Connection error recovery
-- Message validation
-- Client disconnect handling
-- Broadcast failure recovery
-
-### State Layer
-- State update validation
-- Command validation
-- Error logging
-- State recovery mechanisms
+3. **Behavior State**
+```typescript
+interface BehaviorState {
+    behaviors: {
+        [agentId: string]: string;
+    };
+    timers: {
+        [agentId: string]: number;
+    };
+    awareness: {
+        [agentId: string]: ZoneConfig;
+    };
+}
+```
 
 ## Implementation Guidelines
 
 ### State Management
-1. Always use appropriate state module for specific operations
+1. Use appropriate state module for specific operations
 2. Maintain state isolation
 3. Use proper error handling
 4. Log state changes appropriately
 
-### WebSocket Communication
-1. Validate incoming messages
-2. Handle disconnections gracefully
-3. Implement proper error recovery
-4. Maintain connection state
+### Behavior Implementation
+1. Keep behavior logic pure and stateless
+2. Use BehaviorState for state tracking
+3. Handle behavior transitions properly
+4. Validate behavior contexts
 
-### Command Handling
-1. Validate command structure
-2. Use proper error handling
+### Error Handling
+1. Validate all state transitions
+2. Handle network disconnections
 3. Implement command timeouts
-4. Log command execution
+4. Log all critical operations
 
-## Testing Considerations
+## Testing Strategy
 
-### State Testing
-1. Test state transitions
-2. Verify state consistency
-3. Test error conditions
-4. Validate state updates
-
-### WebSocket Testing
-1. Test connection handling
-2. Verify message processing
-3. Test broadcast functionality
-4. Validate error scenarios
+### Unit Testing
+1. Test individual behaviors
+2. Verify state transitions
+3. Test decision making
+4. Validate calculations
 
 ### Integration Testing
-1. Test full update cycle
+1. Test behavior interactions
 2. Verify state synchronization
 3. Test error recovery
 4. Validate game flow
+
+### Performance Testing
+1. Test with multiple agents
+2. Verify update cycle timing
+3. Test network performance
+4. Monitor state sync load

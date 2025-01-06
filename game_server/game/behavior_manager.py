@@ -1,111 +1,113 @@
-from typing import Dict, List, Optional
-from loguru import logger
-from .vector import Vector2D
-from .models import Agent
-from .behaviors import BehaviorSystem, BaseBehavior, BehaviorContext, AwarenessSystem, WanderBehavior, WanderTogetherBehavior, AttackBehavior, FleeBehavior
-import math
-import random
-class BehaviorManager:
-    def __init__(self):
-        self.default_behaviors = {
-            "wander": WanderBehavior(),
-            "wander_together": WanderTogetherBehavior(),
-            "attack": AttackBehavior(),
-            "flee": FleeBehavior(),
-        }
-        self.custom_behaviors: Dict[str, str] = {}  # Maps behavior ID -> behavior code
-        self.agent_behaviors: Dict[str, str] = {}   # Maps agent ID -> behavior ID
+# game/behavior_manager.py
 
+from typing import Dict, List, Optional, Type
+from loguru import logger
+from .behaviors import BaseBehavior, BehaviorType, WanderBehavior
+
+class BehaviorManager:
+    """Manages custom behaviors and behavior registration"""
+    
+    def __init__(self):
+        self.custom_behaviors: Dict[str, str] = {}  # behavior_id -> code
+        self.compiled_behaviors: Dict[str, Type[BaseBehavior]] = {}  # Cache for compiled behaviors
+        
     def get_available_behaviors(self) -> List[Dict[str, str]]:
-        """Fetch all behaviors (default + custom)."""
-        behaviors = []
-        for behavior_name in self.default_behaviors:
-            behaviors.append({
-                "id": behavior_name,
-                "name": behavior_name.replace("_", " ").title(),
-                "type": "default",
-            })
+        """Get all available behaviors including built-in and custom"""
+        behaviors = [
+            {
+                "id": behavior_type.name.lower(),
+                "name": behavior_type.name.replace("_", " ").title(),
+                "type": "default"
+            }
+            for behavior_type in BehaviorType
+        ]
+        
+        # Add custom behaviors
         for behavior_id, code in self.custom_behaviors.items():
             behaviors.append({
                 "id": behavior_id,
                 "name": f"Custom Behavior {behavior_id}",
                 "type": "custom",
-                "code": code,
+                "code": code
             })
+            
         return behaviors
 
-    def add_behavior(self, behavior_id: str, behavior_code: str) -> bool:
-        """Add or update a custom behavior."""
+    def add_custom_behavior(self, behavior_id: str, behavior_code: str) -> bool:
+        """Add or update a custom behavior"""
         try:
-            # Validate the behavior code if needed
-            # For example, check if it's valid Python or matches expected behavior format.
-            self.custom_behaviors[behavior_id] = behavior_code
-            logger.info(f"Custom behavior {behavior_id} added/updated.")
-            return True
+            # Validate behavior code
+            if self._validate_behavior_code(behavior_code):
+                self.custom_behaviors[behavior_id] = behavior_code
+                # Clear cached compilation if exists
+                self.compiled_behaviors.pop(behavior_id, None)
+                logger.info(f"Custom behavior {behavior_id} added/updated")
+                return True
+            return False
         except Exception as e:
             logger.error(f"Failed to add behavior {behavior_id}: {e}")
             return False
 
-    def assign_behavior_to_agent(self, agent_id: str, behavior_id: str) -> bool:
-        """Assign a behavior to an agent."""
-        if behavior_id in self.default_behaviors or behavior_id in self.custom_behaviors:
-            self.agent_behaviors[agent_id] = behavior_id
-            logger.info(f"Assigned behavior {behavior_id} to agent {agent_id}.")
-            return True
-        logger.error(f"Behavior {behavior_id} not found.")
-        return False
-
-    def get_agent_behavior(self, agent_id: str) -> Optional[str]:
-        """Get the behavior ID currently assigned to an agent."""
-        return self.agent_behaviors.get(agent_id)
-
-    def execute_behavior(self, agent: Agent, nearby_agents: List[Agent]) -> Vector2D:
-        """Execute the behavior assigned to an agent."""
-        behavior_id = self.get_agent_behavior(agent.id)
-        if not behavior_id:
-            logger.warning(f"No behavior assigned to agent {agent.id}. Defaulting to 'wander'.")
-            behavior = self.default_behaviors["wander"]
-        elif behavior_id in self.default_behaviors:
-            behavior = self.default_behaviors[behavior_id]
-        else:
-            behavior_code = self.custom_behaviors.get(behavior_id)
-            if not behavior_code:
-                logger.warning(f"Custom behavior {behavior_id} not found. Defaulting to 'wander'.")
-                behavior = self.default_behaviors["wander"]
-            else:
-                # Dynamically execute the custom behavior
-                behavior = self._compile_and_execute_behavior(behavior_code, agent, nearby_agents)
-        
-        # Prepare the context
-        awareness = AwarenessSystem()  # or use the existing instance
-        agents_by_zone = awareness.get_agents_by_zone(agent, nearby_agents)
-        context = BehaviorContext(
-            agent=agent,
-            agents_by_zone=agents_by_zone,
-            current_behavior=behavior_id,  # Use the string ID for clarity
-            time_in_behavior=0,  # Could be tracked elsewhere
-        )
-        return behavior.execute(context)
-
-    def _compile_and_execute_behavior(self, behavior_code: str, agent: Agent, nearby_agents: List[Agent]) -> BaseBehavior:
-        """Compile and execute custom behavior code."""
+    def get_behavior_instance(self, behavior_id: str) -> Optional[BaseBehavior]:
+        """Get an instance of a behavior by ID"""
         try:
-            # Create a local context for execution
-            local_context = {
-                "Vector2D": Vector2D,
-                "math": math,
-                "random": random,
-                "Agent": Agent,
-                "logger": logger,
-                "agent": agent,
-                "nearby_agents": nearby_agents,
-            }
-            exec(behavior_code, {}, local_context)
-            behavior_class = local_context.get("CustomBehavior")
-            if not behavior_class:
-                logger.error("Custom behavior does not define 'CustomBehavior' class.")
-                return WanderBehavior()  # Fallback
-            return behavior_class()
+            # Check if it's a built-in behavior
+            try:
+                behavior_type = BehaviorType[behavior_id.upper()]
+                return behavior_type.value()
+            except KeyError:
+                pass
+            
+            # Check if it's a custom behavior
+            if behavior_id in self.custom_behaviors:
+                # Use cached compiled behavior if available
+                if behavior_id not in self.compiled_behaviors:
+                    behavior_class = self._compile_behavior_code(self.custom_behaviors[behavior_id])
+                    self.compiled_behaviors[behavior_id] = behavior_class
+                
+                return self.compiled_behaviors[behavior_id]()
+            
+            return None
         except Exception as e:
-            logger.error(f"Error executing custom behavior: {e}")
-            return WanderBehavior()  # Fallback
+            logger.error(f"Error getting behavior instance for {behavior_id}: {e}")
+            return WanderBehavior()  # Safe fallback
+
+    def _validate_behavior_code(self, behavior_code: str) -> bool:
+        """Validate custom behavior code"""
+        try:
+            # Simple compilation test
+            compiled = compile(behavior_code, '<string>', 'exec')
+            # Additional validation could be added here
+            return True
+        except Exception as e:
+            logger.error(f"Invalid behavior code: {e}")
+            return False
+
+    def _compile_behavior_code(self, behavior_code: str) -> Type[BaseBehavior]:
+        """Compile custom behavior code"""
+        try:
+            # Create namespace for compilation
+            namespace = {
+                'BaseBehavior': BaseBehavior,
+                'Vector2D': Vector2D,
+                'BehaviorContext': BehaviorContext
+            }
+            
+            # Execute the code in our namespace
+            exec(behavior_code, namespace)
+            
+            # Get the CustomBehavior class
+            if 'CustomBehavior' not in namespace:
+                raise ValueError("Custom behavior must define 'CustomBehavior' class")
+            
+            behavior_class = namespace['CustomBehavior']
+            
+            # Validate it's a proper behavior
+            if not issubclass(behavior_class, BaseBehavior):
+                raise ValueError("CustomBehavior must inherit from BaseBehavior")
+            
+            return behavior_class
+            
+        except Exception as e:
+            logger.error(f"Error compiling behavior code: {e}")
+            raise

@@ -7,6 +7,7 @@ from loguru import logger
 
 T = TypeVar('T')
 
+
 @dataclass
 class BaseState(Generic[T], IState[T]):
     """Base implementation of IState"""

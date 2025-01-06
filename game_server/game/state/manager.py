@@ -20,24 +20,20 @@ class StateManager:
     def register_state[T](
         self,
         state_type: Type[T], 
-        initial_value: T,
+        state: BaseState[T],  # Changed to accept state object
         owner_id: UUID
     ) -> BaseState[T]:
-        """Register a new state instance"""
+        """Register an existing state instance"""
         try:
-            # Create state with the owner_id instead of generating new UUID
-            state = BaseState[T](
-                initial_value=initial_value,
-                state_id=owner_id  # Use provided ID
-            )
-            self._states[state.state_id] = state
+            # Store the actual state object
+            self._states[owner_id] = state
             
             # Register in type registry
             if state_type not in self._type_registry:
                 self._type_registry[state_type] = {}
             self._type_registry[state_type][owner_id] = state
             
-            logger.info(f"Registered state {state.state_id} for {state_type.__name__}")
+            logger.info(f"Registered state {owner_id} for {state_type.__name__}")
             return state
         except Exception as e:
             logger.exception(f"Failed to register state: {e}")

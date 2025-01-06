@@ -1,17 +1,16 @@
+# game/models/agent.py
+
 import math
 import random
 import uuid
 from typing import Dict, List, Optional, Any, Tuple
 from loguru import logger
-from ..behaviors import BehaviorSystem
+from ..behaviors import BehaviorType, BehaviorExecutor
 from ..vector import Vector2D
 from ..world.world import World
 from .stats import CombatStats, MovementStats
 from .physics import Physics
-# import the right libraries of time 
 import time
-
-
 
 class Agent:
     def __init__(self, team: str, position: Vector2D, world: World, bounds: Tuple[float, float, float, float]):
@@ -41,8 +40,8 @@ class Agent:
         self.target_id: Optional[str] = None
         self.wander_angle: float = random.uniform(0, math.pi * 2)
         
-        # Behavior system
-        self.behavior_system = BehaviorSystem()
+        # For behavior execution only (state managed elsewhere)
+        self.behavior_executor = BehaviorExecutor()
         self.current_behavior: Optional[str] = None
 
     @property
@@ -61,17 +60,28 @@ class Agent:
     def velocity(self, value: Vector2D):
         self.physics.velocity = value
 
-    def update_behavior(self, nearby_agents: List['Agent']) -> None:
+    def update_behavior(self, current_behavior: BehaviorType, nearby_agents: List['Agent']) -> None:
+        """Update agent behavior using current behavior from state"""
         try:
-            behavior_force = self.behavior_system.update(self, nearby_agents)
+            # Execute behavior and get force
+            behavior_force = self.behavior_executor.execute_behavior(
+                self, 
+                nearby_agents,
+                current_behavior
+            )
             self.physics.stored_force = behavior_force
             
+            # Update current behavior for serialization
+            self.current_behavior = current_behavior.name
+            
+            # Handle combat if we have a target
             if self.target_id:
                 target = next((a for a in nearby_agents if a.id == self.target_id), None)
                 if target and self.combat.can_attack():
                     distance = (target.position - self.position).magnitude()
                     if distance <= self.combat.attack_range:
                         self.attack(target)
+                        
         except Exception as e:
             logger.error(f"Error updating agent behavior {self.id}: {e}")
 
@@ -98,21 +108,20 @@ class Agent:
             return False
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert Agent to a serializable dictionary"""
         try:
             return {
                 "id": self.id,
                 "team": self.team,
-                "position": {
-                    "x": self.physics.position.x,
-                    "y": self.physics.position.y
-                },
+                "position": {"x": self.position.x, "y": self.position.y},
+                "velocity": {"x": self.velocity.x, "y": self.velocity.y},
                 "health": self.combat.health,
+                "behavior": self.current_behavior,
                 "target_id": self.target_id,
-                "behavior": self.current_behavior
             }
         except Exception as e:
             logger.error(f"Error serializing agent {self.id}: {e}")
             return {
                 "id": self.id,
-                "error": str(e)
+                "error": str(e),
             }

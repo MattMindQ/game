@@ -39,4 +39,48 @@ export class BehaviorSlice {
       }
     });
   }
+
+  // -----------------------------------------------------------
+  // Delta Update Methods
+  // -----------------------------------------------------------
+
+  /**
+   * Update or merge partial custom behaviors into the state.
+   * @param partialBehaviors Array of partially updated behaviors.
+   */
+  public updateBehaviors(partialBehaviors: Partial<CustomBehavior>[]): void {
+    partialBehaviors.forEach((partialBehavior) => {
+      const existingBehavior = this.customBehaviors[partialBehavior.id];
+      if (existingBehavior) {
+        this.customBehaviors[partialBehavior.id] = {
+          ...existingBehavior,
+          ...partialBehavior,
+        };
+      } else {
+        this.customBehaviors[partialBehavior.id] = partialBehavior as CustomBehavior;
+      }
+    });
+  }
+
+  /**
+   * Update or merge partial agent behavior assignments into the state.
+   * @param partialAgentBehaviors Array of agent-behavior mappings.
+   */
+  public updateAgentBehaviors(
+    partialAgentBehaviors: { agentId: string; behaviorId: string }[]
+  ): void {
+    partialAgentBehaviors.forEach(({ agentId, behaviorId }) => {
+      this.agentBehaviors[agentId] = behaviorId;
+    });
+  }
+
+  /**
+   * Remove behaviors and unassign from agents as needed.
+   * @param behaviorIds Array of behavior IDs to remove.
+   */
+  public removeBehaviors(behaviorIds: string[]): void {
+    behaviorIds.forEach((behaviorId) => {
+      this.removeBehavior(behaviorId);
+    });
+  }
 }

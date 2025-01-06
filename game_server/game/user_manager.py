@@ -18,3 +18,4 @@ class UserManager:
     def get_active_user(self) -> str:
         return self.active_user_id
 
+

@@ -8,6 +8,7 @@ from game_server.game.state.combat_state import CombatState
 from game_server.game.state.config_state import ConfigState
 from game_server.game.state.agent_state import AgentState
 from game_server.game.state.base_state import BaseState
+from game_server.game.vector import Vector2D
 
 class WebSocketDebugger:
     def __init__(self):
@@ -48,7 +49,7 @@ class WebSocketDebugger:
         self.world_state.initialize()
         logger.info("Initialized world state")
         
-        # Simulate adding a wall
+        # Add a wall to the world state
         world_value = self.world_state.get_value()
         wall = {
             "position": {"x": 100, "y": 100},
@@ -59,25 +60,14 @@ class WebSocketDebugger:
         self.world_state.set_value(world_value)
         logger.info("Added a wall to the world state")
         
-        # Simulate a combat state change
-        self.combat_state.update_team_count("red", 1)
-        logger.info("Updated combat state for team red")
-        
-        # Simulate a configuration change using the correct method
-        user_state = self.config_state.get_user_state()
-        logger.info(f"Retrieved user state: {user_state}")
-        
-        # Simulate applying a configuration (if required)
-        current_config = self.config_state.get_state()
-        logger.info(f"Retrieved config state: {current_config}")
-        
-        # Simulate an agent being added
+        # Simulate adding an agent
         agent_id = self.agent_state.add_agent(
             team="red",
-            position={"x": 200, "y": 200},
+            position=Vector2D(200, 200),
             world=self.world_state.get_value().world_component
         )
         logger.info(f"Added agent {agent_id} to the agent state")
+
 
     
     def get_websocket_data(self):

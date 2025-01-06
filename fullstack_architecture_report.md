@@ -2,7 +2,7 @@
 ## Project Structure
 ### Backend Structure
 ```game_server/
-    +-- main.py (LOC: 69)
+    +-- main.py (LOC: 112)
     +-- __init__.py (LOC: 0)
     +-- data/
         +-- behavior_service.py (LOC: 69)
@@ -15,21 +15,46 @@
         +-- behavior_manager.py (LOC: 111)
         +-- config_manager.py (LOC: 30)
         +-- constants.py (LOC: 5)
-        +-- loop.py (LOC: 76)
+        +-- loop.py (LOC: 72)
         +-- models.py (LOC: 233)
         +-- state_manager.py (LOC: 161)
         +-- user_manager.py (LOC: 20)
         +-- vector.py (LOC: 37)
         +-- __init__.py (LOC: 0)
+        +-- components/
+            +-- combat.py (LOC: 50)
+            +-- movement.py (LOC: 48)
+            +-- physics.py (LOC: 74)
+            +-- world.py (LOC: 98)
+            +-- __init__.py (LOC: 0)
+        +-- core/
+            +-- base.py (LOC: 53)
+            +-- component_manager.py (LOC: 44)
+            +-- engine.py (LOC: 39)
+            +-- __init__.py (LOC: 0)
         +-- models/
+            +-- agent.py (LOC: 117)
+            +-- common.py (LOC: 19)
+            +-- physics.py (LOC: 24)
+            +-- stats.py (LOC: 50)
+            +-- __init__.py (LOC: 13)
         +-- physics/
             +-- collision.py (LOC: 88)
         +-- state/
-            +-- agent_state.py (LOC: 90)
-            +-- combat_state.py (LOC: 97)
-            +-- config_state.py (LOC: 97)
-            +-- world_state.py (LOC: 110)
+            +-- agent_state.py (LOC: 125)
+            +-- base_state.py (LOC: 67)
+            +-- combat_state.py (LOC: 125)
+            +-- config_state.py (LOC: 104)
+            +-- game_state_manager.py (LOC: 103)
+            +-- interfaces.py (LOC: 46)
+            +-- manager.py (LOC: 57)
+            +-- registry.py (LOC: 77)
+            +-- synchronization.py (LOC: 91)
+            +-- update.py (LOC: 57)
+            +-- world_state.py (LOC: 179)
             +-- __init__.py (LOC: 0)
+        +-- utils/
+            +-- vector.py (LOC: 37)
         +-- world/
             +-- base.py (LOC: 27)
             +-- wall.py (LOC: 20)
@@ -41,8 +66,8 @@
         +-- prompts.py (LOC: 108)
         +-- __init__.py (LOC: 0)
     +-- network/
-        +-- command_handler.py (LOC: 261)
-        +-- websocket.py (LOC: 149)
+        +-- command_handler.py (LOC: 233)
+        +-- websocket.py (LOC: 144)
         +-- __init__.py (LOC: 0)```
 ### Frontend Structure
 ```game_client/
@@ -54,15 +79,6 @@
         +-- style.css (LOC: 96)
         +-- ui.ts (LOC: 54)
         +-- vite-env.d.ts (LOC: 1)
-        +-- components/
-            +-- AgentDetailsPanel.ts (LOC: 17)
-            +-- BehaviorListPanel.ts (LOC: 14)
-            +-- CodeEditor.ts (LOC: 18)
-            +-- ControlPanel.ts (LOC: 27)
-            +-- DebugInfo.ts (LOC: 23)
-            +-- GamePanel.ts (LOC: 22)
-            +-- debug/
-                +-- DebugPanel.ts (LOC: 83)
         +-- constants/
             +-- events.ts (LOC: 95)
         +-- editor/
@@ -90,7 +106,7 @@
             +-- MessageHandler.ts (LOC: 86)
             +-- NotificationService.ts (LOC: 21)
             +-- socket copy.ts (LOC: 305)
-            +-- socket.ts (LOC: 135)    # WebSocket client implementation
+            +-- socket.ts (LOC: 146)    # WebSocket client implementation
             +-- types.ts (LOC: 52)
         +-- state/
             +-- AgentSlice.ts (LOC: 46)
@@ -109,7 +125,7 @@
                     +-- config.html (LOC: 105)
         +-- types/
             +-- config.ts (LOC: 41)
-            +-- index.ts (LOC: 58)
+            +-- index.ts (LOC: 57)
         +-- ui/
             +-- BehaviorPanelManager.ts (LOC: 159)
             +-- toggles.ts (LOC: 74)
@@ -122,10 +138,10 @@
             +-- templateLoader.ts (LOC: 20)```
 ## Backend Analysis
 
-Total Python files: 34
+Total Python files: 56
 
 ### main.py
-(LOC: 69)
+(LOC: 112)
 
 ### __init__.py
 (LOC: 0)
@@ -190,7 +206,7 @@ Total Python files: 34
 (LOC: 5)
 
 ### game\loop.py
-(LOC: 76)
+(LOC: 72)
 
 #### Classes:
 - GameLoop
@@ -227,6 +243,90 @@ Total Python files: 34
 ### game\__init__.py
 (LOC: 0)
 
+### game\components\combat.py
+(LOC: 50)
+
+#### Classes:
+- CombatComponent
+- CombatComponentFactory
+
+### game\components\movement.py
+(LOC: 48)
+
+#### Classes:
+- MovementComponent
+- MovementComponentFactory
+
+### game\components\physics.py
+(LOC: 74)
+
+#### Classes:
+- CollisionInfo
+- PhysicsComponent
+- PhysicsComponentFactory
+
+### game\components\world.py
+(LOC: 98)
+
+#### Classes:
+- WorldComponent
+- WorldComponentFactory
+
+### game\components\__init__.py
+(LOC: 0)
+
+### game\core\base.py
+(LOC: 53)
+
+#### Classes:
+- IComponent
+- IState
+- IBehavior
+
+### game\core\component_manager.py
+(LOC: 44)
+
+#### Classes:
+- ComponentManager
+
+### game\core\engine.py
+(LOC: 39)
+
+#### Classes:
+- GameEngine
+
+### game\core\__init__.py
+(LOC: 0)
+
+### game\models\agent.py
+(LOC: 117)
+
+#### Classes:
+- Agent
+
+### game\models\common.py
+(LOC: 19)
+
+#### Classes:
+- DeadAgent
+
+### game\models\physics.py
+(LOC: 24)
+
+#### Classes:
+- Physics
+
+### game\models\stats.py
+(LOC: 50)
+
+#### Classes:
+- GameStats
+- CombatStats
+- MovementStats
+
+### game\models\__init__.py
+(LOC: 13)
+
 ### game\physics\collision.py
 (LOC: 88)
 
@@ -234,31 +334,90 @@ Total Python files: 34
 - CollisionInfo
 
 ### game\state\agent_state.py
-(LOC: 90)
+(LOC: 125)
 
 #### Classes:
+- AgentStateData
 - AgentState
 
-### game\state\combat_state.py
-(LOC: 97)
+### game\state\base_state.py
+(LOC: 67)
 
 #### Classes:
+- BaseState
+
+### game\state\combat_state.py
+(LOC: 125)
+
+#### Classes:
+- CombatStateData
 - CombatState
 
 ### game\state\config_state.py
-(LOC: 97)
+(LOC: 104)
 
 #### Classes:
+- ConfigStateData
 - ConfigState
 
-### game\state\world_state.py
-(LOC: 110)
+### game\state\game_state_manager.py
+(LOC: 103)
 
 #### Classes:
+- GameStateManager
+
+### game\state\interfaces.py
+(LOC: 46)
+
+#### Classes:
+- IState
+- IStateObserver
+- IStateSynchronizer
+
+### game\state\manager.py
+(LOC: 57)
+
+#### Classes:
+- StateManager
+
+### game\state\registry.py
+(LOC: 77)
+
+#### Classes:
+- StateContainer
+- TypedStateRegistry
+- ComponentState
+
+### game\state\synchronization.py
+(LOC: 91)
+
+#### Classes:
+- StateSync
+- StateSynchronizer
+- StateSyncObserver
+
+### game\state\update.py
+(LOC: 57)
+
+#### Classes:
+- StateUpdate
+- UpdateProcessor
+
+### game\state\world_state.py
+(LOC: 179)
+
+#### Classes:
+- WorldStateData
 - WorldState
 
 ### game\state\__init__.py
 (LOC: 0)
+
+### game\utils\vector.py
+(LOC: 37)
+
+#### Classes:
+- Vector2D
 
 ### game\world\base.py
 (LOC: 27)
@@ -300,13 +459,13 @@ Total Python files: 34
 (LOC: 0)
 
 ### network\command_handler.py
-(LOC: 261)
+(LOC: 233)
 
 #### Classes:
 - CommandHandler
 
 ### network\websocket.py
-(LOC: 149)
+(LOC: 144)
 
 #### Classes:
 - ConnectionManager
@@ -314,11 +473,11 @@ Total Python files: 34
 ### network\__init__.py
 (LOC: 0)
 
-**Total Python LOC:** 2843
+**Total Python LOC:** 4152
 
 ## Frontend Analysis
 
-Total TypeScript files: 47
+Total TypeScript files: 40
 
 ### Unknown Files:
 
@@ -458,7 +617,7 @@ Exports:
 - export interface GameConfig {
 
 #### src\types\index.ts
-(LOC: 58)
+(LOC: 57)
 Exports:
 - export interface Position {
 - export interface Agent {
@@ -503,57 +662,6 @@ Exports:
 Functions:
 - setupCopilot
 - setupStateSubscriptions
-
-### Component Files:
-
-#### src\components\AgentDetailsPanel.ts
-(LOC: 17)
-Exports:
-- export function createAgentDetailsPanel() {
-Functions:
-- createAgentDetailsPanel
-
-#### src\components\BehaviorListPanel.ts
-(LOC: 14)
-Exports:
-- export function createBehaviorListPanel() {
-Functions:
-- createBehaviorListPanel
-
-#### src\components\CodeEditor.ts
-(LOC: 18)
-Exports:
-- export function createCodeEditor() {
-Functions:
-- createCodeEditor
-
-#### src\components\ControlPanel.ts
-(LOC: 27)
-Exports:
-- export function createControlPanel() {
-Functions:
-- createControlPanel
-
-#### src\components\DebugInfo.ts
-(LOC: 23)
-Exports:
-- export function createDebugInfo() {
-Functions:
-- createDebugInfo
-
-#### src\components\GamePanel.ts
-(LOC: 22)
-Exports:
-- export function createGamePanel() {
-Functions:
-- createGamePanel
-
-#### src\components\debug\DebugPanel.ts
-(LOC: 83)
-Exports:
-- export class DebugPanel {
-Classes:
-- DebugPanel
 
 ### Game Files:
 
@@ -635,7 +743,7 @@ Classes:
 - GameConnection
 
 #### src\network\socket.ts
-(LOC: 135)
+(LOC: 146)
 Exports:
 - export class GameConnection {
 Classes:
@@ -678,4 +786,4 @@ Exports:
 Classes:
 - TemplateLoader
 
-**Total TypeScript LOC:** 4249
+**Total TypeScript LOC:** 4055

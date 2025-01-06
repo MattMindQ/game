@@ -1,3 +1,5 @@
+# game/behaviors.py
+
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, NamedTuple
@@ -22,11 +24,6 @@ class ZoneType(Enum):
     VISUAL = "visual"
     RECOGNITION = "recognition"
     COMBAT = "combat"
-    
-    @classmethod
-    def add_zone(cls, name: str) -> 'ZoneType':
-        """Dynamically add new zone type"""
-        return Enum(cls.__name__, {name.upper(): name})
 
 class Zone(NamedTuple):
     """Zone configuration"""
@@ -47,10 +44,6 @@ class AwarenessSystem:
                 ZoneType.RECOGNITION: Zone(ZoneType.RECOGNITION, 100.0, 2),
                 ZoneType.COMBAT: Zone(ZoneType.COMBAT, 30.0, 3)
             }
-    
-    def add_zone(self, zone_type: ZoneType, range: float, priority: int):
-        """Add or update a zone"""
-        self.zones[zone_type] = Zone(zone_type, range, priority)
     
     def get_agents_by_zone(self, agent: 'Agent', all_agents: List['Agent']) -> Dict[ZoneType, List['Agent']]:
         """Categorize agents by zones they are in"""
@@ -239,49 +232,33 @@ class DecisionMaker:
     def get_behavior(self, behavior_type: BehaviorType) -> BaseBehavior:
         return self.behaviors[behavior_type]
 
-class BehaviorSystem:
+class BehaviorExecutor:
+    """Handles behavior execution separate from state management"""
     def __init__(self):
         self.decision_maker = DecisionMaker()
-        self.current_behaviors: Dict[str, BehaviorType] = {}
-        self.behavior_timers: Dict[str, float] = {}
         self.awareness = AwarenessSystem()
-    
-    def add_zone(self, zone_type: ZoneType, range: float, priority: int):
-        """Add or update an awareness zone"""
-        self.awareness.add_zone(zone_type, range, priority)
-    
-    def update(self, agent: 'Agent', nearby_agents: List['Agent']) -> Vector2D:
-        """Main update method for behavior system"""
+
+    def execute_behavior(self, agent: 'Agent', nearby_agents: List['Agent'], 
+                        current_behavior: BehaviorType) -> Vector2D:
+        """Execute behavior based on current state"""
         try:
             # Get agents categorized by zones
             agents_by_zone = self.awareness.get_agents_by_zone(agent, nearby_agents)
             
-            # Prepare enhanced context
+            # Get behavior instance
+            behavior = self.decision_maker.get_behavior(current_behavior)
+            
+            # Create context
             context = BehaviorContext(
                 agent=agent,
                 agents_by_zone=agents_by_zone,
-                current_behavior=self.current_behaviors.get(agent.id, BehaviorType.WANDER),
-                time_in_behavior=self.behavior_timers.get(agent.id, 0)
+                current_behavior=current_behavior,
+                time_in_behavior=0  # Time tracking handled by state
             )
             
-            # Get appropriate behavior
-            new_behavior = self.decision_maker.evaluate(context)
-            
-            # Update behavior tracking
-            if new_behavior != self.current_behaviors.get(agent.id):
-                self.current_behaviors[agent.id] = new_behavior
-                self.behavior_timers[agent.id] = 0
-                logger.info(f"Agent {agent.id} changing behavior to {new_behavior.name}")
-            
-            # Execute behavior with context
-            behavior = self.decision_maker.get_behavior(new_behavior)
-            force = behavior.execute(context)
-            
-            # Update timer
-            self.behavior_timers[agent.id] = self.behavior_timers.get(agent.id, 0) + 1
-            
-            return force
+            # Execute and return force
+            return behavior.execute(context)
             
         except Exception as e:
-            logger.error(f"Error in behavior system: {e}")
+            logger.error(f"Error executing behavior: {e}")
             return Vector2D(0, 0)  # Safe default

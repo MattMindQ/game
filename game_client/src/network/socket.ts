@@ -25,15 +25,15 @@ export class GameConnection {
     private setupSocketHandlers(): void {
         this.socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            
+
             if (this.debugManager) {
                 this.debugManager.updateBroadcastData({
                     timestamp: new Date().toISOString(),
                     type: message.type,
-                    data: message.data
+                    data: message.data,
                 });
             }
-            
+
             this.routeMessage(message);
         };
 
@@ -56,6 +56,8 @@ export class GameConnection {
     }
 
     private routeMessage(message: any): void {
+        console.log('Received message:', message);
+
         switch (message.type) {
             case 'game_update':
                 this.messageHandler.handleGameUpdate(message.data);
@@ -69,12 +71,8 @@ export class GameConnection {
             case 'behavior_update':
                 this.messageHandler.handleBehaviorUpdate(message.data);
                 break;
-            case 'llm_response':
-                document.dispatchEvent(new CustomEvent('llmResponse', { detail: message.data }));
-                break;
-            case 'llm_error':
-                NotificationService.show(`LLM Error: ${message.data.error}`, 'error');
-                document.dispatchEvent(new CustomEvent('llmError', { detail: message.data }));
+            default:
+                console.warn('Unhandled message type:', message.type);
                 break;
         }
     }
@@ -90,6 +88,7 @@ export class GameConnection {
         });
 
         document.getElementById('resetButton')?.addEventListener('click', () => {
+            console.log('Resetting game...');
             this.sendCommand({ type: 'reset_game' });
         });
     }
@@ -117,7 +116,7 @@ export class GameConnection {
         this.sendCommand({
             type: 'update_custom_behavior',
             agent_id: agentId,
-            code: code
+            code,
         });
     }
 
@@ -127,9 +126,8 @@ export class GameConnection {
             data: {
                 query,
                 context: typeof context === 'string' ? context : JSON.stringify(context),
-                conversationId
-            }
+                conversationId,
+            },
         });
     }
 }
-

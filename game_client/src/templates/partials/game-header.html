@@ -35,104 +35,10 @@
 </div>
 
 <!-- Config Parameters -->
+
 <div id="gameConfig" class="space-y-4">
-    <!-- Game Settings -->
-    <div class="border-b border-gray-700 pb-4">
-        <h3 class="text-white font-medium mb-3">Game Settings</h3>
-        <div class="grid grid-cols-2 gap-4">
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Number of Agents:</span>
-                <input type="number" id="agentCount" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="agentCount">
-            </label>
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Game Area Size:</span>
-                <input type="number" id="gameAreaSize" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="gameAreaSize">
-            </label>
-        </div>
-    </div>
-
-    <!-- Combat Settings -->
-    <div class="border-b border-gray-700 pb-4">
-        <h3 class="text-white font-medium mb-3">Combat Settings</h3>
-        <div class="grid grid-cols-2 gap-4">
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Visual Range:</span>
-                <input type="number" id="visualRange" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="visualRange">
-            </label>
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Recognition Range:</span>
-                <input type="number" id="recognitionRange" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="recognitionRange">
-            </label>
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Combat Range:</span>
-                <input type="number" id="combatRange" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="combatRange">
-            </label>
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Base Damage:</span>
-                <input type="number" id="baseDamage" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="baseDamage">
-            </label>
-        </div>
-    </div>
-
-    <!-- Movement Settings -->
-    <div class="border-b border-gray-700 pb-4">
-        <h3 class="text-white font-medium mb-3">Movement Settings</h3>
-        <div class="grid grid-cols-2 gap-4">
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Base Speed:</span>
-                <input type="number" id="baseSpeed" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="baseSpeed">
-            </label>
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Turn Speed:</span>
-                <input type="number" id="turnSpeed" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="turnSpeed">
-            </label>
-        </div>
-    </div>
-
-    <!-- World Settings -->
-    <div class="border-b border-gray-700 pb-4">
-        <h3 class="text-white font-medium mb-3">World Settings</h3>
-        <div class="grid grid-cols-2 gap-4">
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Obstacle Count:</span>
-                <input type="number" id="obstacleCount" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="obstacleCount">
-            </label>
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Obstacle Size:</span>
-                <input type="number" id="obstacleSize" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="obstacleSize">
-            </label>
-            <div class="col-span-2">
-                <label class="flex items-center text-gray-300">
-                    <input type="checkbox" id="enableWorldLogic" class="mr-2" data-config-key="enableWorldLogic">
-                    <span>Enable World Logic (Obstacles & Walls)</span>
-                </label>
-            </div>
-        </div>
-    </div>
-
-    <!-- Team Settings -->
-    <div>
-        <h3 class="text-white font-medium mb-3">Team Settings</h3>
-        <div class="grid grid-cols-2 gap-4">
-            <label class="flex flex-col text-gray-300">
-                <span class="mb-1">Team Balance:</span>
-                <input type="range" id="teamBalance" min="-1" max="1" step="0.1" 
-                       class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="teamBalance">
-            </label>
-            <div class="flex flex-col">
-                <label class="flex items-center text-gray-300 mb-2">
-                    <input type="checkbox" id="respawnEnabled" class="mr-2" data-config-key="respawnEnabled">
-                    <span>Enable Respawn</span>
-                </label>
-                <label class="flex flex-col text-gray-300">
-                    <span class="mb-1">Respawn Time (ms):</span>
-                    <input type="number" id="respawnTime" class="bg-gray-700 text-white px-3 py-2 rounded" data-config-key="respawnTime">
-                </label>
-            </div>
-        </div>
-    </div>
-</div>
-</div>
+    <!-- Config will be dynamically rendered here -->
+  </div></div>
 <!-- Game Canvas -->
 <div class="bg-gray-800 rounded-lg shadow-xl overflow-hidden">
     <canvas id="gameCanvas" class="block w-full bg-gray-700"></canvas>

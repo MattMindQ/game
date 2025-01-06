@@ -6,6 +6,7 @@ from loguru import logger
 from .base_state import BaseState
 from data.config_service import ConfigService
 from data.user_service import UserService
+from data.default_game_settings import DEFAULT_GAME_CONFIG, DEFAULT_USER
 
 @dataclass
 class ConfigStateData:
@@ -16,8 +17,6 @@ class ConfigStateData:
 
 class ConfigState(BaseState[ConfigStateData]):
     """Enhanced config state with component-based architecture"""
-    
-    
     def __init__(self):
         initial_data = ConfigStateData()
         super().__init__(initial_value=initial_data)
@@ -33,8 +32,8 @@ class ConfigState(BaseState[ConfigStateData]):
         """Initialize user state"""
         try:
             data = self.get_value()
-            data.default_user = await self.user_service.get_or_create_default_user()
-            data.active_user_id = data.default_user['_id']
+            data.default_user = DEFAULT_USER
+            data.active_user_id = DEFAULT_USER["_id"]
             self.set_value(data)
             logger.info(f"Initialized with default user: {data.active_user_id}")
         except Exception as e:
@@ -44,9 +43,7 @@ class ConfigState(BaseState[ConfigStateData]):
         """Initialize configuration state"""
         try:
             data = self.get_value()
-            data.active_config = await self.config_service.get_default_config()
-            if not data.active_config:
-                logger.warning("No default config found")
+            data.active_config = DEFAULT_GAME_CONFIG
             self.set_value(data)
         except Exception as e:
             logger.exception(f"Error initializing config: {e}")

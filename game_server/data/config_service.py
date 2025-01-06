@@ -3,12 +3,25 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from .db_connector import DatabaseConnector
 import logging
+from .default_game_settings import DEFAULT_GAME_CONFIG, DEFAULT_USER
 
 logger = logging.getLogger(__name__)
 
 class ConfigService:
-    def __init__(self):
+    def __init__(self, use_defaults: bool = True):
         self.db = DatabaseConnector()
+        self.use_defaults = use_defaults
+
+    async def get_default_config(self) -> Dict[str, Any]:
+        if self.use_defaults:
+            return DEFAULT_GAME_CONFIG
+            
+        try:
+            config = self.db.configs.find_one({"is_default": True})
+            return self.db.format_id(config) if config else DEFAULT_GAME_CONFIG
+        except Exception as e:
+            logger.exception(f"Error retrieving default config: {e}")
+            return DEFAULT_GAME_CONFIG
 
     async def save_config(self, config_data: dict, user_id: str) -> str:
         try:

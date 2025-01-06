@@ -1,12 +1,15 @@
 // src/game/Renderer.ts
-import { Agent, GameStats, WorldState } from '../types';
+import { Agent, GameStats, WorldState, Position } from '../types';
 import { WorldRenderer } from './renderers/WorldRenderer';
 import { AgentRenderer } from './renderers/AgentRenderer';
 import { DebugRenderer } from './renderers/DebugRenderer';
+import { Viewport, RenderStats } from './renderers/types';
 
 interface RenderConfig {
     gridSize: number;
     backgroundColor: string;
+    minZoom: number;
+    maxZoom: number;
 }
 
 export class Renderer {
@@ -16,12 +19,21 @@ export class Renderer {
     private agentRenderer: AgentRenderer;
     private debugRenderer: DebugRenderer;
     private config: RenderConfig;
+    private viewport: Viewport;
     private lastRenderTime: number = 0;
     private frameCount: number = 0;
     private fps: number = 0;
 
+    // Camera control
+    private isDragging: boolean = false;
+    private lastMousePos: Position | null = null;
+    private renderStats: RenderStats = {
+        fps: 0,
+        frameTime: 0,
+        drawCalls: 0
+    };
+
     constructor(canvasId: string) {
-        // Initialize canvas
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!this.canvas) throw new Error('Canvas element not found');
         
@@ -29,41 +41,51 @@ export class Renderer {
         if (!context) throw new Error('Could not get canvas context');
         this.ctx = context;
 
-        // Default configuration
         this.config = {
             gridSize: 50,
-            backgroundColor: '#1f2937' // Tailwind gray-800
+            backgroundColor: '#1f2937',
+            minZoom: 0.5,
+            maxZoom: 2.0
         };
 
-        // Initialize renderers
+        this.viewport = {
+            x: 0,
+            y: 0,
+            scale: 1,
+            rotation: 0
+        };
+
         this.initializeRenderers();
-        
-        // Setup canvas and events
         this.setupCanvas();
         this.bindEvents();
     }
 
-    private initializeRenderers() {
+    public handleResize(): void {
+        this.setupCanvas();
+        this.updateRenderersViewport();
+    }
+
+    private initializeRenderers(): void {
         try {
             this.worldRenderer = new WorldRenderer(this.ctx, this.canvas);
             this.agentRenderer = new AgentRenderer(this.ctx, this.canvas);
             this.debugRenderer = new DebugRenderer(this.ctx, this.canvas);
+            this.updateRenderersViewport();
         } catch (error) {
             console.error('Error initializing renderers:', error);
             throw new Error('Failed to initialize renderers');
         }
     }
 
-    private setupCanvas() {
+    private setupCanvas(): void {
         try {
             const parent = this.canvas.parentElement;
             if (!parent) throw new Error('Canvas parent element not found');
 
             const parentWidth = parent.clientWidth;
             this.canvas.width = parentWidth;
-            this.canvas.height = parentWidth * 0.6; // 3:5 aspect ratio
+            this.canvas.height = parentWidth * 0.6;
 
-            // Enable image smoothing for better rendering
             this.ctx.imageSmoothingEnabled = true;
             this.ctx.imageSmoothingQuality = 'high';
         } catch (error) {
@@ -71,111 +93,163 @@ export class Renderer {
         }
     }
 
-    private bindEvents() {
-        // Debounced resize handler
-        let resizeTimeout: NodeJS.Timeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                this.setupCanvas();
-                // Force re-render after resize
-                this.render([], undefined, undefined);
-            }, 250);
+    private bindEvents(): void {
+        this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+        this.canvas.addEventListener('mouseleave', this.handleMouseUp.bind(this));
+    }
+
+    private handleMouseDown(event: MouseEvent): void {
+        if (event.button === 1) {
+            this.isDragging = true;
+            this.lastMousePos = { x: event.clientX, y: event.clientY };
+        }
+    }
+
+    private handleMouseMove(event: MouseEvent): void {
+        if (this.isDragging && this.lastMousePos) {
+            const dx = event.clientX - this.lastMousePos.x;
+            const dy = event.clientY - this.lastMousePos.y;
+            
+            this.viewport.x += dx / this.viewport.scale;
+            this.viewport.y += dy / this.viewport.scale;
+            
+            this.lastMousePos = { x: event.clientX, y: event.clientY };
+            this.updateRenderersViewport();
+        }
+    }
+
+    private handleMouseUp(): void {
+        this.isDragging = false;
+        this.lastMousePos = null;
+    }
+
+    private handleWheel(event: WheelEvent): void {
+        event.preventDefault();
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        const worldPos = this.canvasToWorld(mouseX, mouseY);
+        
+        const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = Math.min(
+            Math.max(this.viewport.scale * zoomFactor, this.config.minZoom),
+            this.config.maxZoom
+        );
+
+        this.viewport.scale = newScale;
+        this.viewport.x = mouseX - worldPos.x * this.viewport.scale;
+        this.viewport.y = mouseY - worldPos.y * this.viewport.scale;
+
+        this.updateRenderersViewport();
+    }
+
+    public centerOnPosition(position: Position): void {
+        const canvas = this.getCanvasDimensions();
+        this.viewport.x = canvas.width / 2 - position.x * this.viewport.scale;
+        this.viewport.y = canvas.height / 2 - position.y * this.viewport.scale;
+        this.updateRenderersViewport();
+    }
+
+    private updateRenderersViewport(): void {
+        [this.worldRenderer, this.agentRenderer, this.debugRenderer].forEach(renderer => {
+            renderer.setViewport(this.viewport);
         });
     }
 
-    public setSelectedAgent(agentId: string | null) {
-        try {
-            this.agentRenderer.setSelectedAgent(agentId);
-            this.debugRenderer.setSelectedAgent(agentId);
-        } catch (error) {
-            console.error('Error setting selected agent:', error);
-        }
+    public setSelectedAgent(agentId: string | null): void {
+        this.agentRenderer.setSelectedAgent(agentId);
+        this.debugRenderer.setSelectedAgent(agentId);
     }
 
-    public toggleGrid(show: boolean) {
+    public toggleGrid(show: boolean): void {
         this.debugRenderer.toggleGrid(show);
     }
 
-    public toggleDebug(show: boolean) {
+    public toggleDebug(show: boolean): void {
         this.debugRenderer.toggleDebug(show);
     }
 
-    public toggleZones(show: boolean) {
+    public toggleZones(show: boolean): void {
         this.debugRenderer.toggleZones(show);
     }
 
-    public render(agents: Agent[], stats?: GameStats, world?: WorldState) {
-        try {
-            // Clear canvas with background
-            this.clearCanvas();
-
-            // Calculate FPS
-            this.updateFPS();
-
-            // Update stats with current FPS if provided
-            if (stats) {
-                stats.fps = this.fps;
-            }
-
-            // Render layers in order
-            this.renderLayers(agents, stats, world);
-
-        } catch (error) {
-            console.error('Error during render:', error);
-        }
-    }
-
-    private clearCanvas() {
-        this.ctx.fillStyle = this.config.backgroundColor;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    private updateFPS() {
-        const now = performance.now();
-        const delta = now - this.lastRenderTime;
+    private updateFPS(deltaTime: number): void {
         this.frameCount++;
-
-        if (delta >= 1000) {
-            this.fps = Math.round((this.frameCount * 1000) / delta);
+        const now = performance.now();
+        
+        if (now - this.lastRenderTime >= 1000) {
+            this.renderStats.fps = this.frameCount;
+            this.renderStats.frameTime = deltaTime;
             this.frameCount = 0;
             this.lastRenderTime = now;
         }
     }
 
-    private renderLayers(agents: Agent[], stats?: GameStats, world?: WorldState) {
-        // Save context state
-        this.ctx.save();
+    public render(agents: Agent[], stats?: GameStats, world?: WorldState): void {
+        const startTime = performance.now();
 
         try {
-            // Render grid and debug info first (background layer)
-            this.debugRenderer.render(agents, stats);
+            this.clearCanvas();
+            this.renderLayers(agents, stats, world);
+            this.updateFPS(performance.now() - startTime);
 
-            // Render world elements (middle layer)
+            if (stats) {
+                stats.fps = this.renderStats.fps;
+            }
+        } catch (error) {
+            console.error('Error during render:', error);
+        }
+    }
+
+    private clearCanvas(): void {
+        this.ctx.fillStyle = this.config.backgroundColor;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    private renderLayers(agents: Agent[], stats?: GameStats, world?: WorldState): void {
+        this.ctx.save();
+        try {
+            this.debugRenderer.render(agents, stats);
             if (world) {
                 this.worldRenderer.render(world);
             }
-
-            // Render agents (top layer)
             this.agentRenderer.render(agents);
         } finally {
-            // Restore context state
             this.ctx.restore();
         }
     }
 
-    public canvasToGrid(x: number, y: number): { x: number, y: number } {
+    // Coordinate conversion utilities
+    public canvasToWorld(x: number, y: number): Position {
         return {
-            x: Math.floor(x / this.config.gridSize),
-            y: Math.floor(y / this.config.gridSize)
+            x: (x - this.viewport.x) / this.viewport.scale,
+            y: (y - this.viewport.y) / this.viewport.scale
         };
     }
 
-    public gridToCanvas(gridX: number, gridY: number): { x: number, y: number } {
+    public worldToCanvas(x: number, y: number): Position {
         return {
-            x: gridX * this.config.gridSize + this.config.gridSize / 2,
-            y: gridY * this.config.gridSize + this.config.gridSize / 2
+            x: x * this.viewport.scale + this.viewport.x,
+            y: y * this.viewport.scale + this.viewport.y
         };
+    }
+
+    public canvasToGrid(x: number, y: number): Position {
+        const worldPos = this.canvasToWorld(x, y);
+        return {
+            x: Math.floor(worldPos.x / this.config.gridSize),
+            y: Math.floor(worldPos.y / this.config.gridSize)
+        };
+    }
+
+    public gridToCanvas(gridX: number, gridY: number): Position {
+        const worldX = gridX * this.config.gridSize + this.config.gridSize / 2;
+        const worldY = gridY * this.config.gridSize + this.config.gridSize / 2;
+        return this.worldToCanvas(worldX, worldY);
     }
 
     public getCanvasDimensions(): { width: number, height: number } {
@@ -185,7 +259,22 @@ export class Renderer {
         };
     }
 
-    public setRenderConfig(config: Partial<RenderConfig>) {
-        this.config = { ...this.config, ...config };
+    public getViewport(): Viewport {
+        return { ...this.viewport };
+    }
+
+    public setViewport(viewport: Partial<Viewport>): void {
+        this.viewport = { ...this.viewport, ...viewport };
+        this.updateRenderersViewport();
+    }
+
+    public resetViewport(): void {
+        this.viewport = {
+            x: 0,
+            y: 0,
+            scale: 1,
+            rotation: 0
+        };
+        this.updateRenderersViewport();
     }
 }

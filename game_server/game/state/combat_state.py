@@ -16,6 +16,15 @@ class CombatStateData:
     dead_agents: List[DeadAgent] = field(default_factory=list)
     recent_kills: List[Dict[str, Any]] = field(default_factory=list)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert CombatStateData to a serializable dictionary"""
+        return {
+            "stats": self.stats.to_dict(),
+            "dead_agents": [dead_agent.to_dict() for dead_agent in self.dead_agents],
+            "recent_kills": self.recent_kills,
+        }
+
+
 class CombatState(BaseState[CombatStateData]):
     """Enhanced combat state with component-based architecture"""
     
@@ -104,11 +113,7 @@ class CombatState(BaseState[CombatStateData]):
     
     def get_state(self) -> Dict[str, Any]:
         """Get serializable state"""
-        data = self.get_value()
-        return {
-            "stats": data.stats.to_dict(),
-            "recent_kills": data.recent_kills.copy() if data.recent_kills else []
-        }
+        return self.get_value().to_dict()
     
     def update_team_count(self, team: str, delta: int) -> None:
         """Update team count statistics"""

@@ -3,7 +3,7 @@
 import asyncio
 from typing import Callable
 from loguru import logger
-from .state.game_state_manager import GameStateManager  # Import the new manager
+from .state.game_state_manager import GameStateManager
 from .constants import UPDATE_INTERVAL
 
 class GameLoop:
@@ -20,8 +20,7 @@ class GameLoop:
             logger.info("Game loop started")
     
     def should_run(self) -> bool:
-        """Check if game loop should run based on connection state"""
-        return self.game_state_manager.is_running  # Use the manager's state
+        return self.game_state_manager.is_running
     
     async def stop(self):
         if self.task:
@@ -39,6 +38,9 @@ class GameLoop:
         while self.is_running:
             try:
                 if self.should_run():
+                    # Update game state
+                    self._update_game_state()
+                    
                     # Synchronize states and retrieve updates
                     delta_updates = self.game_state_manager.sync_states()
 
@@ -49,7 +51,7 @@ class GameLoop:
                             "data": delta_updates
                         })
 
-                    # Get the complete state update (if necessary)
+                    # Get the complete state update
                     full_state = self.game_state_manager.get_state_update()
                     if full_state:
                         await self.broadcast_callback({
@@ -59,7 +61,7 @@ class GameLoop:
 
                     # Periodic logging
                     frame_count += 1
-                    if frame_count >= 60:  # roughly once per second at 60 FPS
+                    if frame_count >= 60:
                         logger.debug("Game loop running smoothly")
                         frame_count = 0
 
@@ -70,3 +72,30 @@ class GameLoop:
             except Exception as e:
                 logger.exception(f"Error in game loop: {e}")
                 await asyncio.sleep(1)  # Wait before retrying
+
+    def _update_game_state(self):
+        """Update game state including behaviors and physics"""
+        try:
+            # Get all agents
+            agents = self.game_state_manager.agent_state.get_agents_list()
+            
+            # Update behaviors
+            for agent in agents:
+                # Get current behavior from state
+                current_behavior = self.game_state_manager.behavior_state.get_agent_behavior(agent.id)
+                
+                # Update agent behavior
+                agent.update_behavior(current_behavior, agents)
+                
+                # Increment behavior timer
+                self.game_state_manager.behavior_state.increment_behavior_timer(agent.id, UPDATE_INTERVAL)
+            
+            # Update positions
+            for agent in agents:
+                agent.update_position()
+            
+            # Let behavior state evaluate and potentially change behaviors
+            self.game_state_manager.agent_state.update_behaviors()
+            
+        except Exception as e:
+            logger.error(f"Error updating game state: {e}")

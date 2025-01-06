@@ -1,11 +1,13 @@
 // src/game/Game.ts
 import { Renderer } from './Renderer';
 import { StateManager } from '../managers/StateManager';
-import { Agent, GameStats, Position, WorldState } from '../types';
+import { UserInputManager } from '../managers/UserInputManager';
+import { Agent, GameStats, WorldState } from '../types';
 
 export class Game {
     private renderer: Renderer;
     private stateManager: StateManager;
+    private inputManager: UserInputManager;
     private agents: Agent[] = [];
     private worldState: WorldState | null = null;
     private stats: GameStats = {
@@ -20,20 +22,20 @@ export class Game {
     private lastFrameTime = 0;
     private frameCount = 0;
     private lastFpsUpdate = 0;
-    private selectedAgentId: string | null = null;
 
     constructor(stateManager: StateManager) {
         this.stateManager = stateManager;
         this.renderer = new Renderer('gameCanvas');
+        
+        // Initialize input manager after renderer
+        this.inputManager = new UserInputManager(stateManager);
+        this.inputManager.setRenderer(this.renderer);
+        
         this.setupEventListeners();
         this.initializeGameLoop();
     }
 
     private setupEventListeners() {
-        // Canvas click handling for agent selection
-        const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-        canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
-
         // Display toggles
         const gridToggle = document.getElementById('showGrid') as HTMLInputElement;
         const debugToggle = document.getElementById('showDebugInfo') as HTMLInputElement;
@@ -42,10 +44,21 @@ export class Game {
         // Subscribe to state changes
         this.stateManager.subscribe('gameState', (state) => {
             this.isRunning = state.isRunning;
+            if (!this.isRunning) {
+                this.inputManager.disableInput();
+            } else {
+                this.inputManager.enableInput();
+            }
         });
 
         this.stateManager.subscribe('agents', (agents) => {
-            this.agents = agents;
+            // Ensure agents is always an array
+            if (Array.isArray(agents)) {
+                this.agents = agents;
+            } else {
+                console.error('Received non-array agents:', agents);
+                this.agents = [];
+            }
         });
 
         this.stateManager.subscribe('stats', (stats) => {
@@ -82,43 +95,10 @@ export class Game {
                 if (parent) {
                     canvas.width = parent.clientWidth;
                     canvas.height = parent.clientWidth * 0.6;
+                    this.renderer.handleResize();
                 }
             }
         });
-    }
-
-    private handleCanvasClick(event: MouseEvent) {
-        const canvas = event.target as HTMLCanvasElement;
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-
-        // Scale coordinates if canvas is resized
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const scaledX = x * scaleX;
-        const scaledY = y * scaleY;
-
-        const clickedAgent = this.findClickedAgent({ x: scaledX, y: scaledY });
-        
-        if (clickedAgent) {
-            this.selectedAgentId = clickedAgent.id;
-            this.renderer.setSelectedAgent(clickedAgent.id);
-            this.stateManager.setSelectedAgent(clickedAgent);
-        } else {
-            this.selectedAgentId = null;
-            this.renderer.setSelectedAgent(null);
-            this.stateManager.setSelectedAgent(null);
-        }
-    }
-
-    private findClickedAgent(clickPos: Position): Agent | null {
-        const clickRadius = 15; // Detection radius for clicks
-        return this.agents.find(agent => {
-            const dx = agent.position.x - clickPos.x;
-            const dy = agent.position.y - clickPos.y;
-            return Math.sqrt(dx * dx + dy * dy) <= clickRadius;
-        }) || null;
     }
 
     private initializeGameLoop() {
@@ -152,14 +132,18 @@ export class Game {
     }
 
     private update(deltaTime: number) {
-        // Update local state based on deltaTime
         this.updateLocalState(deltaTime);
-        // Update stats
         this.updateStats();
     }
 
     private updateLocalState(deltaTime: number) {
-        // Smooth interpolation for agent positions if needed
+        // Add safety check
+        if (!Array.isArray(this.agents)) {
+            console.error('Agents is not an array:', this.agents);
+            this.agents = [];
+            return;
+        }
+
         this.agents.forEach(agent => {
             if (agent.targetPosition) {
                 const dx = agent.targetPosition.x - agent.position.x;
@@ -167,7 +151,7 @@ export class Game {
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
                 if (distance > 1) {
-                    const speed = 0.1; // Adjust based on your needs
+                    const speed = 0.1;
                     agent.position.x += dx * speed;
                     agent.position.y += dy * speed;
                 }
@@ -175,14 +159,20 @@ export class Game {
         });
     }
 
+
     private updateStats() {
-        // Update team counts
         this.stats.red_agents = this.agents.filter(a => a.team === 'red').length;
         this.stats.blue_agents = this.agents.filter(a => a.team === 'blue').length;
     }
 
     private render() {
-        // Pass world state to renderer
+        // Add safety check
+        if (!Array.isArray(this.agents)) {
+            console.error('Agents is not an array in render:', this.agents);
+            this.agents = [];
+        }
+
+        console.log('Rendering agents:', this.agents.length);
         this.renderer.render(this.agents, this.stats, this.worldState);
     }
 
@@ -195,10 +185,8 @@ export class Game {
     public pause() {
         this.isRunning = false;
         this.stateManager.setGameRunning(false);
-      
-        this.sendCommand({ type: 'toggle_game' });
-      }
-      
+        this.stateManager.sendCommand({ type: 'toggle_game' });
+    }
 
     public togglePause() {
         if (this.isRunning) {
@@ -217,7 +205,7 @@ export class Game {
     }
 
     public getSelectedAgent(): Agent | null {
-        return this.agents.find(agent => agent.id === this.selectedAgentId) || null;
+        return this.stateManager.getSelectedAgent();
     }
 
     public getStats(): GameStats {
@@ -226,5 +214,17 @@ export class Game {
 
     public getWorldState(): WorldState | null {
         return this.worldState;
+    }
+
+    // Camera control methods
+    public centerOnAgent(agentId: string) {
+        const agent = this.agents.find(a => a.id === agentId);
+        if (agent) {
+            this.renderer.centerOnPosition(agent.position);
+        }
+    }
+
+    public resetView() {
+        this.renderer.resetViewport();
     }
 }

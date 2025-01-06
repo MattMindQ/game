@@ -4,14 +4,13 @@ export interface Position {
     y: number;
 }
 
-// Agent type for individual agents in the game
 export interface Agent {
     id: string;
     team: 'red' | 'blue'; // Team affiliation
     position: Position; // Current position
     health: number; // Health percentage (0-100)
     target_id?: string; // Current target (optional)
-    customBehavior?: string; // ID of custom behavior assigned
+    behavior?: string; // Behavior ID assigned to the agent
     velocity?: Position; // Velocity vector (optional)
     rotation?: number; // Rotation angle in degrees (optional)
 }
@@ -42,17 +41,41 @@ export interface WorldObject {
     height: number; // Height of the object
 }
 
-// WorldState type for the game world configuration
 export interface WorldState {
     walls: WorldObject[]; // Array of walls
     holes: WorldObject[]; // Array of holes
     colines: WorldObject[]; // Array of colines (custom objects)
+    bounds?: [number, number, number, number]; // Optional bounds for the world
 }
+
+// GameConfig type for game configuration
+export interface GameConfig {
+    parameters: { [key: string]: any }; // Parameters for the game configuration
+    name: string; // Config name
+    description?: string; // Optional description
+}
+
+// BehaviorState type for tracking behaviors
+export interface BehaviorState {
+    behaviors: Record<string, string>; // Agent ID to behavior mapping
+    timers: Record<string, number>; // Timers per agent
+    awareness: Record<string, any>; // Awareness zones
+}
+
+// CombatState type for tracking combat events
+export interface CombatState {
+    stats?: GameStats;
+    dead_agents?: string[];
+    recent_kills?: { killer: string; victim: string }[];
+}
+
 
 // StateUpdate type for syncing state between frontend and backend
 export interface StateUpdate {
     timestamp: number; // Time of the update
-    agents: Agent[]; // List of agents
-    stats: GameStats; // Current game stats
+    agents?: { [id: string]: Agent }; // List of agents (dictionary format)
+    stats?: GameStats; // Current game stats
     world?: WorldState; // Current world state (optional)
+    behaviors?: BehaviorState; // Current behavior state (optional)
+    combat?: CombatState; // Current combat state (optional)
 }

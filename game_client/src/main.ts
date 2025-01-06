@@ -8,6 +8,7 @@ import { setupCopilot } from './ui/copilot/setup';
 import { DebugManager } from './utils/debug_check';
 import { EditorManager } from './editor/EditorManager';
 import { TemplateLoader } from './utils/templateLoader';
+import { ConfigManager } from './managers/ConfigManager';
 
 class GameApplication {
     private stateManager: StateManager;
@@ -16,6 +17,7 @@ class GameApplication {
     private userInputManager: UserInputManager;
     private editorManager: EditorManager;
     private debugManager: DebugManager;
+    private configManager: ConfigManager;
 
     constructor() {
         this.initialize();
@@ -26,25 +28,56 @@ class GameApplication {
             // Load all HTML partials first
             await TemplateLoader.loadPartials();
     
-            // Initialize core components
-            this.stateManager = new StateManager();
+            // Create and initialize ConfigManager first
+            this.configManager = new ConfigManager();
+            
+            // Wait for DOM to be ready
+            await this.waitForDOM();
+            
+            // Initialize core components with proper dependencies
+            this.stateManager = new StateManager(this.configManager);
             this.game = new Game(this.stateManager);
             this.connection = new GameConnection(this.stateManager);
             this.userInputManager = new UserInputManager(this.stateManager);
             
-            // Initialize debug manager
+            // Initialize UI components
+            this.configManager.initializeUI('gameConfig');
+            
+            // Initialize remaining components
             this.debugManager = new DebugManager(this.stateManager);
             this.connection.setDebugManager(this.debugManager);
-    
-            // Initialize editor
             this.editorManager = new EditorManager(this.stateManager);
             
             // Continue with component initialization
             await this.initializeComponents();
         } catch (error) {
             console.error('Failed to initialize application:', error);
-            // You might want to show a user-friendly error message here
+            this.handleInitializationError(error);
         }
+    }
+
+    private handleInitializationError(error: any): void {
+        // Add user-friendly error handling
+        const errorContainer = document.getElementById('errorContainer');
+        if (errorContainer) {
+            errorContainer.innerHTML = `
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                    <strong class="font-bold">Initialization Error!</strong>
+                    <span class="block sm:inline">Failed to start the application. Please refresh the page.</span>
+                </div>
+            `;
+        }
+        console.error('Detailed error:', error);
+    }
+
+    private waitForDOM(): Promise<void> {
+        return new Promise((resolve) => {
+            if (document.readyState === 'complete') {
+                resolve();
+            } else {
+                window.addEventListener('load', () => resolve());
+            }
+        });
     }
 
     private async initializeComponents() {
@@ -56,6 +89,20 @@ class GameApplication {
         
         // Setup WebSocket message handling
         this.setupMessageHandling();
+
+        // Setup config sync with backend
+        this.setupConfigSync();
+    }
+
+    private setupConfigSync() {
+        // Subscribe to config changes
+        this.configManager.subscribe((config) => {
+            // Send updated config to backend
+            this.connection.sendCommand({
+                type: 'update_config',
+                data: config
+            });
+        });
     }
 
     private setupMessageHandling() {

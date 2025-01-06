@@ -1,5 +1,4 @@
 // src/state/WorldSlice.ts
-
 import { WorldState } from '../types';
 
 /**
@@ -14,6 +13,14 @@ export class WorldSlice {
 
   public setWorld(newWorld: WorldState): void {
     this.world = newWorld;
+  }
+
+  public updateWorld(partialWorld: Partial<WorldState>): void {
+    if (!this.world) {
+      this.world = partialWorld as WorldState;
+    } else {
+      this.world = { ...this.world, ...partialWorld };
+    }
   }
 
   public clearWorld(): void {

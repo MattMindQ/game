@@ -1,3 +1,4 @@
+# game_server/game/state/world_state.py
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Dict, Any
 from uuid import UUID
@@ -10,6 +11,7 @@ from ..vector import Vector2D
 from .interfaces import IStateObserver
 import random
 from datetime import datetime
+from data.default_game_settings import DEFAULT_GAME_CONFIG
 
 @dataclass
 class WorldStateData:
@@ -45,46 +47,35 @@ class WorldState(BaseState[WorldStateData]):
     def _generate_world(self, width: float, height: float, num_walls: int) -> None:
         """Generate world with walls"""
         data = self.get_value()
+        params = DEFAULT_GAME_CONFIG["parameters"]
         
         # Clear existing walls
         data.world_component.initialize()
         
         # Generate corner walls
-        self._generate_corner_walls(width, height)
+        self._generate_corner_walls(
+            width, 
+            height
+        )
         
         # Generate random walls
-        self._add_random_walls(width, height, num_walls)
-    
-    def _generate_corner_walls(self, width: float, height: float) -> None:
-        """Generate walls in corners"""
-        data = self.get_value()
-        corners = [(0, 0), (width, 0), (0, height), (width, height)]
-        
-        for i, (cx, cy) in enumerate(corners):
-            wall_width = random.uniform(60, 120)
-            wall_height = random.uniform(60, 120)
-            
-            if cx == width:
-                cx -= wall_width
-            if cy == height:
-                cy -= wall_height
-                
-            wall = Wall(
-                position=Vector2D(cx, cy),
-                width=wall_width,
-                height=wall_height,
-                name=f"Corner-{i+1}"
-            )
-            data.world_component.add_wall(wall)
-    
+        self._add_random_walls(
+            width, 
+            height, 
+            num_walls
+        )
+
     def _add_random_walls(self, width: float, height: float, num_walls: int) -> None:
         """Add random walls"""
         data = self.get_value()
-        min_gap = 50
+        params = DEFAULT_GAME_CONFIG["parameters"]
+        min_gap = params["minWallGap"]
+        min_size = params["randomWallMinSize"]
+        max_size = params["randomWallMaxSize"]
         
         for i in range(num_walls):
-            wall_width = random.uniform(40, 80)
-            wall_height = random.uniform(40, 80)
+            wall_width = random.uniform(min_size, max_size)
+            wall_height = random.uniform(min_size, max_size)
             
             for _ in range(100):  # Maximum placement attempts
                 x = random.uniform(0, width - wall_width)
@@ -110,6 +101,32 @@ class WorldState(BaseState[WorldStateData]):
                     )
                     data.world_component.add_wall(wall)
                     break
+
+    def _generate_corner_walls(self, width: float, height: float) -> None:
+        """Generate walls in corners"""
+        data = self.get_value()
+        params = DEFAULT_GAME_CONFIG["parameters"]
+        min_size = params["cornerWallMinSize"]
+        max_size = params["cornerWallMaxSize"]
+        
+        corners = [(0, 0), (width, 0), (0, height), (width, height)]
+        
+        for i, (cx, cy) in enumerate(corners):
+            wall_width = random.uniform(min_size, max_size)
+            wall_height = random.uniform(min_size, max_size)
+            
+            if cx == width:
+                cx -= wall_width
+            if cy == height:
+                cy -= wall_height
+                
+            wall = Wall(
+                position=Vector2D(cx, cy),
+                width=wall_width,
+                height=wall_height,
+                name=f"Corner-{i+1}"
+            )
+            data.world_component.add_wall(wall)
     
     def get_random_position(self) -> Vector2D:
         """Generate a valid random position away from walls"""
